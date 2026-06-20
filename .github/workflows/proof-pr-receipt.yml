@@ -43,6 +43,16 @@ on:
         required: false
         type: string
         default: ""
+      receipt_hygiene:
+        description: Write receipt hygiene suggestions to the job summary.
+        required: false
+        type: boolean
+        default: true
+      receipt_hygiene_strict:
+        description: Fail the workflow when receipt hygiene warnings are present.
+        required: false
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       receipt_path:
@@ -85,6 +95,16 @@ on:
         required: false
         type: string
         default: ""
+      receipt_hygiene:
+        description: Write receipt hygiene suggestions to the job summary.
+        required: false
+        type: boolean
+        default: true
+      receipt_hygiene_strict:
+        description: Fail the workflow when receipt hygiene warnings are present.
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   validate-receipt:
@@ -142,6 +162,23 @@ jobs:
         env:
           RECEIPT_PATH: ${{ inputs.receipt_path }}
         run: proof-pr validate "$RECEIPT_PATH"
+
+      - name: Receipt hygiene
+        if: ${{ inputs.receipt_hygiene }}
+        env:
+          RECEIPT_PATH: ${{ inputs.receipt_path }}
+          RECEIPT_HYGIENE_STRICT: ${{ inputs.receipt_hygiene_strict }}
+        run: |
+          set -euo pipefail
+          args=("$RECEIPT_PATH")
+          if [ "$RECEIPT_HYGIENE_STRICT" = "true" ]; then
+            args+=("--strict")
+          fi
+          {
+            echo "## receipt hygiene"
+            echo
+            proof-pr receipt-hygiene "${args[@]}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Render proof summary
         env:

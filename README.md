@@ -119,3 +119,5 @@ Use `receipt-hygiene` as a read-only pre-review nudge. It inspects an existing
 receipt and suggests missing standard evidence for the risk tier, starting with
 public git metadata, secrets posture, workflow permission posture, and rollback
 specificity. Add `--strict` when a repo wants hygiene warnings to fail CI.
+The reusable workflow writes these suggestions to the job summary by default in
+advisory mode.

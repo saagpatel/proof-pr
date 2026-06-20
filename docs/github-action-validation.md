@@ -10,11 +10,12 @@ dogfooding.
 2. Optionally gate public git metadata for repos that require noreply-only live
    history/tags.
 3. Validate `proof-pr.json` with `scripts/proof_pr.py validate`.
-4. Upload `proof-pr.json` and `proof-pr-artifacts/` when present.
-5. Render the Markdown proof block into the job summary.
-6. Optionally run `proof-pr finalize --require-ready` after dogfooding proves the
+4. Write advisory `proof-pr receipt-hygiene` output into the job summary.
+5. Upload `proof-pr.json` and `proof-pr-artifacts/` when present.
+6. Render the Markdown proof block into the job summary.
+7. Optionally run `proof-pr finalize --require-ready` after dogfooding proves the
    receipt is ready to act as a soft gate.
-7. Leave PR body updates and required-check enforcement disabled for v0.
+8. Leave PR body updates and required-check enforcement disabled for v0.
 
 ## Reusable Workflow
 
@@ -35,13 +36,15 @@ jobs:
     permissions:
       contents: read
       actions: read
-    uses: saagpatel/proof-pr/.github/workflows/proof-pr-receipt.yml@v0.2.5
+    uses: saagpatel/proof-pr/.github/workflows/proof-pr-receipt.yml@v0.2.6
     with:
       receipt_path: proof-pr.json
-      proof_pr_ref: v0.2.5
+      proof_pr_ref: v0.2.6
       artifact_name: proof-pr
       artifact_glob: proof-pr-artifacts/**
       check_public_git_metadata: false
+      receipt_hygiene: true
+      receipt_hygiene_strict: false
       # For older repos with legacy public metadata, prefer introduced mode:
       # check_public_git_metadata: true
       # public_git_metadata_mode: introduced
@@ -58,6 +61,8 @@ The workflow:
 - writes the public git metadata scope to the job summary when that check is
   enabled, including `full` versus `introduced` mode and tag scope;
 - validates the receipt;
+- writes receipt hygiene suggestions to the job summary in advisory mode by
+  default;
 - renders the proof block into the job summary, anchored to the GitHub run SHA;
 - uploads the receipt and optional proof artifacts.
 
@@ -115,6 +120,11 @@ proof-pr receipt-hygiene proof-pr.json
 tier; `--strict` makes warnings fail for repos that want a soft gate after
 dogfooding.
 
+The reusable workflow runs `receipt-hygiene` by default after validation and
+writes the result to the job summary. Keep `receipt_hygiene_strict: false` while
+adopting; set it to `true` only after the repo's receipts consistently pass
+hygiene locally and in CI.
+
 Caller workflows should grant explicit read permissions to the reusable workflow
 job. Without the `contents: read` and `actions: read` stanza, GitHub can fail a
 new caller workflow before any job logs are produced.
@@ -150,6 +160,8 @@ jobs:
         run: python3 scripts/proof_pr.py check-public-git-metadata --base-ref "$PUBLIC_METADATA_BASE_REF" --ref "$PUBLIC_METADATA_REF" --summary-format text
       - name: Validate receipt
         run: python3 scripts/proof_pr.py validate proof-pr.json
+      - name: Receipt hygiene
+        run: python3 scripts/proof_pr.py receipt-hygiene proof-pr.json >> "$GITHUB_STEP_SUMMARY"
       # Enable after dogfooding if the repo wants a non-blocking ready check first:
       # - name: Check finalized decision
       #   run: python3 scripts/proof_pr.py finalize proof-pr.json --require-ready
