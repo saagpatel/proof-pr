@@ -1,0 +1,96 @@
+name: proof-pr receipt
+
+on:
+  workflow_call:
+    inputs:
+      receipt_path:
+        description: Path to the proof-pr receipt JSON in the caller checkout.
+        required: false
+        type: string
+        default: proof-pr.json
+      proof_pr_ref:
+        description: proof-pr git ref to install.
+        required: false
+        type: string
+        default: main
+      artifact_name:
+        description: Uploaded artifact name for the proof bundle.
+        required: false
+        type: string
+        default: proof-pr
+      artifact_glob:
+        description: Optional shell glob for additional proof artifacts.
+        required: false
+        type: string
+        default: proof-pr-artifacts/**
+  workflow_dispatch:
+    inputs:
+      receipt_path:
+        description: Path to the proof-pr receipt JSON in this checkout.
+        required: false
+        type: string
+        default: proof-pr.json
+      proof_pr_ref:
+        description: proof-pr git ref to install.
+        required: false
+        type: string
+        default: main
+      artifact_name:
+        description: Uploaded artifact name for the proof bundle.
+        required: false
+        type: string
+        default: proof-pr
+      artifact_glob:
+        description: Optional shell glob for additional proof artifacts.
+        required: false
+        type: string
+        default: proof-pr-artifacts/**
+
+jobs:
+  validate-receipt:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install proof-pr
+        run: python3 -m pip install "git+https://github.com/saagpatel/proof-pr.git@${{ inputs.proof_pr_ref }}"
+
+      - name: Validate receipt
+        env:
+          RECEIPT_PATH: ${{ inputs.receipt_path }}
+        run: proof-pr validate "$RECEIPT_PATH"
+
+      - name: Render proof summary
+        env:
+          RECEIPT_PATH: ${{ inputs.receipt_path }}
+        run: |
+          {
+            echo "## proof-pr"
+            echo
+            proof-pr render "$RECEIPT_PATH"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Stage proof bundle
+        env:
+          RECEIPT_PATH: ${{ inputs.receipt_path }}
+          ARTIFACT_GLOB: ${{ inputs.artifact_glob }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/proof-pr-upload"
+          cp "$RECEIPT_PATH" "$RUNNER_TEMP/proof-pr-upload/"
+          shopt -s globstar nullglob
+          matches=( $ARTIFACT_GLOB )
+          if [ "${#matches[@]}" -gt 0 ]; then
+            mkdir -p "$RUNNER_TEMP/proof-pr-upload/artifacts"
+            cp -R "${matches[@]}" "$RUNNER_TEMP/proof-pr-upload/artifacts/"
+          fi
+
+      - name: Upload proof bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: ${{ runner.temp }}/proof-pr-upload
+          if-no-files-found: error
