@@ -1,0 +1,166 @@
+{
+  "schema_version": "proof-pr.v1",
+  "receipt_id": "saagpatel-proof-pr-pr-022-test-harness",
+  "generated_at": "2026-06-20T13:24:00Z",
+  "subject": {
+    "repo": "saagpatel/proof-pr",
+    "pr_number": 22,
+    "pr_url": "https://github.com/saagpatel/proof-pr/pull/22",
+    "base_ref": "main",
+    "base_sha": "1060a495053c8ca425f7ca55004d36de7a4baddc",
+    "head_ref": "chore/receipt-hygiene-cli-regression",
+    "head_sha": "0c680d0dae1cfdd49f198f38ccb2ecafc9d09ad5",
+    "head_sha_status": "exact"
+  },
+  "producer": {
+    "tool": "proof-pr",
+    "version": "0.2.10",
+    "agent": "codex",
+    "mode": "manual"
+  },
+  "risk": {
+    "tier": "T1",
+    "reasons": [
+      "test-only regression harness",
+      "validation workflow and docs update"
+    ],
+    "changed_surfaces": [
+      "tests",
+      "ci-validation",
+      "docs"
+    ]
+  },
+  "change": {
+    "summary": "Adds a dependency-free regression harness for receipt-hygiene CLI exit/stdout/stderr behavior and runs it in validation CI.",
+    "files_touched": [
+      "scripts/test_receipt_hygiene_cli.py",
+      ".github/workflows/proof-pr-validate.yml",
+      "README.md",
+      "docs/release-checklist.md"
+    ],
+    "diff_stats": {
+      "files": 4,
+      "additions": 126,
+      "deletions": 0
+    },
+    "scope_notes": "No production CLI logic, schema, reusable workflow receipt behavior, or release artifact changed."
+  },
+  "evidence": [
+    {
+      "id": "source-harness",
+      "kind": "test",
+      "command": [
+        "python3",
+        "scripts/test_receipt_hygiene_cli.py"
+      ],
+      "status": "passed",
+      "required": true,
+      "summary": "Source-checkout harness passed focused no-finding, focused finding, and ordinary no-finding receipt-hygiene cases."
+    },
+    {
+      "id": "installed-harness",
+      "kind": "test",
+      "command": [
+        "python3",
+        "scripts/test_receipt_hygiene_cli.py",
+        "--proof-pr",
+        "<venv>/bin/proof-pr"
+      ],
+      "status": "passed",
+      "required": true,
+      "summary": "Fresh venv install passed the same harness against the installed proof-pr entrypoint."
+    },
+    {
+      "id": "ci-validate-proof",
+      "kind": "ci",
+      "status": "passed",
+      "required": true,
+      "summary": "PR #22 validate-proof and post-merge main validation passed with the new harness step.",
+      "artifact_ids": [
+        "ci-run-pr-22",
+        "ci-run-main"
+      ]
+    },
+    {
+      "id": "receipt-validation",
+      "kind": "repo-native",
+      "command": [
+        "PYTHONDONTWRITEBYTECODE=1",
+        "python3",
+        "scripts/proof_pr.py",
+        "validate",
+        "examples/pr-*.json"
+      ],
+      "status": "passed",
+      "required": true,
+      "summary": "Example receipts validated."
+    },
+    {
+      "id": "public-git-metadata",
+      "kind": "security",
+      "command": [
+        "python3",
+        "scripts/check_public_git_metadata.py",
+        "--ref",
+        "HEAD",
+        "--ref",
+        "refs/tags/v*"
+      ],
+      "status": "passed",
+      "required": true,
+      "summary": "Public git metadata check passed before merge."
+    },
+    {
+      "id": "screenshots",
+      "kind": "screenshot",
+      "status": "not_applicable",
+      "required": false,
+      "summary": "No UI, browser, dashboard, or visual artifact changed.",
+      "reason": "Test-harness and docs-only maintenance PR"
+    }
+  ],
+  "security": {
+    "secrets_scan": {
+      "status": "not_applicable",
+      "summary": "No secret-bearing code path or fixture content was added."
+    },
+    "permission_diff": {
+      "status": "passed",
+      "summary": "Validation workflow kept existing read-only contents/actions permissions and added only a test step."
+    },
+    "redaction": {
+      "status": "not_applicable",
+      "summary": "No screenshots or private local artifacts included."
+    }
+  },
+  "rollback": {
+    "status": "documented",
+    "path": "Revert PR #22, or remove scripts/test_receipt_hygiene_cli.py and the validation workflow step."
+  },
+  "artifacts": [
+    {
+      "id": "ci-run-pr-22",
+      "kind": "summary",
+      "path_or_url": "https://github.com/saagpatel/proof-pr/actions/runs/27872435302",
+      "description": "PR #22 validate-proof run with receipt hygiene harness output.",
+      "required": true,
+      "external": true
+    },
+    {
+      "id": "ci-run-main",
+      "kind": "summary",
+      "path_or_url": "https://github.com/saagpatel/proof-pr/actions/runs/27872485459",
+      "description": "Post-merge main validation run with receipt hygiene harness output.",
+      "required": true,
+      "external": true
+    }
+  ],
+  "limitations": [
+    "This is a hand-authored canonical example derived from verified PR and CI metadata after merge.",
+    "PR #23 only corrected the harness file mode and is intentionally outside this test-only receipt pattern."
+  ],
+  "overall": {
+    "status": "passed",
+    "review_decision": "ready"
+  }
+}
