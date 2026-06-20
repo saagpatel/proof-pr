@@ -23,6 +23,8 @@ teams, but those audiences should not drive v0 complexity.
 `proof-pr.v1` adds PR-specific anchoring:
 
 - repository, PR number when known, base/head refs, and base/head SHAs;
+- `subject.head_sha_status` when the committed receipt cannot yet know its final
+  head SHA;
 - risk tier and changed surfaces;
 - required evidence by blast radius;
 - reviewer-facing Markdown block;
@@ -109,9 +111,38 @@ Rules:
 - Put detailed logs and screenshots in artifacts, not the body.
 - Link the receipt or artifact bundle when available.
 - Use the exact status vocabulary; do not hide skipped proof.
-- Anchor the block to the receipt head SHA.
+- Anchor the block to the receipt head SHA when it is exact, or to an explicit
+  render-time head SHA when the committed receipt uses `pending_commit`.
 - Long commands may be compacted in the PR body, but the receipt JSON must keep
   the complete command array.
+
+## Commit-Time SHA Anchoring
+
+Committed receipts have a small bootstrapping problem: a JSON file committed in
+the PR cannot know the final commit SHA until after the commit exists. Model that
+honestly instead of pretending the placeholder is final:
+
+```json
+{
+  "subject": {
+    "head_sha": "pending-pr-head",
+    "head_sha_status": "pending_commit"
+  }
+}
+```
+
+`head_sha_status` values:
+
+- `exact`: `subject.head_sha` is the commit SHA the receipt is anchored to.
+- `pending_commit`: the receipt was committed before the final head SHA existed;
+  render the PR/check block with an explicit final SHA.
+- `external_anchor`: the receipt JSON is valid, but the authoritative final
+  anchor is supplied by PR, check-run, or release metadata.
+
+Use `proof-pr render proof-pr.json --head-sha "$GITHUB_SHA"` in CI summaries or
+`proof-pr render proof-pr.json --head-sha <pr-head-sha>` when updating a PR body
+after the branch exists. The rendered block records both the committed JSON head
+and the final rendered anchor when they differ.
 
 ## CLI MVP
 
@@ -145,6 +176,8 @@ Rules:
 - Render the Markdown PR block from `proof-pr.json`.
 - Compact long command lines by default so the block stays reviewable.
 - Use `--full-commands` to render complete commands inline.
+- Use `--head-sha` to anchor the rendered block to a final PR/check SHA without
+  mutating a committed receipt that used `pending_commit`.
 - Optionally print only, update clipboard, or patch a PR body in a later version.
 
 `proof-pr validate`

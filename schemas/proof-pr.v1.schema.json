@@ -34,7 +34,10 @@
         "base_ref": { "type": "string", "minLength": 1 },
         "base_sha": { "type": "string", "minLength": 7 },
         "head_ref": { "type": "string", "minLength": 1 },
-        "head_sha": { "type": "string", "minLength": 7 }
+        "head_sha": { "type": "string", "minLength": 7 },
+        "head_sha_status": {
+          "enum": ["exact", "pending_commit", "external_anchor"]
+        }
       }
     },
     "producer": {
@@ -246,4 +249,3 @@
     }
   }
 }
-

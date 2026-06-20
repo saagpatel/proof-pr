@@ -1,0 +1,123 @@
+{
+  "schema_version": "proof-pr.v1",
+  "receipt_id": "saagpatel-github-repo-auditor-pr-087-proof-pr-dogfood",
+  "generated_at": "2026-06-20T09:00:00Z",
+  "subject": {
+    "repo": "saagpatel/GithubRepoAuditor",
+    "pr_number": 87,
+    "pr_url": "https://github.com/saagpatel/GithubRepoAuditor/pull/87",
+    "base_ref": "main",
+    "base_sha": "b69bd828a240572594ed4a8afec159e546fccefa",
+    "head_ref": "chore/proof-pr-dogfood",
+    "head_sha": "pending-pr-head",
+    "head_sha_status": "pending_commit"
+  },
+  "producer": {
+    "tool": "proof-pr",
+    "version": "0.1.3",
+    "agent": "codex",
+    "mode": "manual"
+  },
+  "risk": {
+    "tier": "T3",
+    "reasons": [
+      "adds a GitHub Actions workflow",
+      "commits a machine-readable proof receipt"
+    ],
+    "changed_surfaces": [
+      "github-actions",
+      "proof-receipt"
+    ]
+  },
+  "change": {
+    "summary": "Adds an advisory proof-pr dogfood workflow and committed receipt.",
+    "files_touched": [
+      ".github/workflows/proof-pr.yml",
+      "proof-pr.json"
+    ],
+    "diff_stats": {
+      "files": 2,
+      "additions": 175,
+      "deletions": 0
+    },
+    "scope_notes": "No application code, package metadata, or generated truth surface changed."
+  },
+  "evidence": [
+    {
+      "id": "receipt-validation",
+      "kind": "repo-native",
+      "command": [
+        "proof-pr validate proof-pr.json"
+      ],
+      "status": "passed",
+      "required": true,
+      "summary": "Committed receipt validated."
+    },
+    {
+      "id": "workflow-yaml",
+      "kind": "repo-native",
+      "command": [
+        "ruby -e \"require 'yaml'; YAML.load_file('.github/workflows/proof-pr.yml')\""
+      ],
+      "status": "passed",
+      "required": true,
+      "summary": "Workflow YAML parsed."
+    },
+    {
+      "id": "github-pr-checks",
+      "kind": "test",
+      "status": "passed",
+      "required": true,
+      "summary": "CodeQL and test (3.11) passed."
+    },
+    {
+      "id": "manual-dogfood-workflow",
+      "kind": "smoke",
+      "status": "passed",
+      "required": true,
+      "summary": "Manual proof-pr reusable workflow passed on main after merge."
+    },
+    {
+      "id": "screenshots",
+      "kind": "screenshot",
+      "status": "not_applicable",
+      "required": false,
+      "summary": "No UI, workbook, dashboard, or visual artifact changed."
+    }
+  ],
+  "security": {
+    "secrets_scan": {
+      "status": "passed",
+      "summary": "Gitleaks found no leaks."
+    },
+    "permission_diff": {
+      "status": "passed",
+      "summary": "New workflow uses explicit read-only contents/actions permissions."
+    },
+    "redaction": {
+      "status": "not_applicable",
+      "summary": "No screenshots or generated portfolio artifacts included."
+    }
+  },
+  "rollback": {
+    "status": "documented",
+    "path": "Revert PR #87 or remove .github/workflows/proof-pr.yml and proof-pr.json."
+  },
+  "artifacts": [
+    {
+      "id": "workflow-run",
+      "kind": "summary",
+      "path_or_url": "https://github.com/saagpatel/GithubRepoAuditor/actions/runs/27866358805",
+      "description": "Manual proof-pr workflow run on main.",
+      "required": true,
+      "external": true
+    }
+  ],
+  "limitations": [
+    "The committed receipt used pending-pr-head because a receipt committed in the same change cannot know its final commit SHA before the commit exists."
+  ],
+  "overall": {
+    "status": "passed_with_warnings",
+    "review_decision": "ready_with_operator_awareness"
+  }
+}
