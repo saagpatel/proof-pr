@@ -35,10 +35,10 @@ jobs:
     permissions:
       contents: read
       actions: read
-    uses: saagpatel/proof-pr/.github/workflows/proof-pr-receipt.yml@v0.2.2
+    uses: saagpatel/proof-pr/.github/workflows/proof-pr-receipt.yml@v0.2.3
     with:
       receipt_path: proof-pr.json
-      proof_pr_ref: v0.2.2
+      proof_pr_ref: v0.2.3
       artifact_name: proof-pr
       artifact_glob: proof-pr-artifacts/**
       check_public_git_metadata: false
@@ -55,6 +55,8 @@ The workflow:
 - installs `proof-pr` from the requested public git ref;
 - optionally checks public git metadata for the configured ref and version tags,
   or only for commits introduced by `base..ref`;
+- writes the public git metadata scope to the job summary when that check is
+  enabled, including `full` versus `introduced` mode and tag scope;
 - validates the receipt;
 - renders the proof block into the job summary, anchored to the GitHub run SHA;
 - uploads the receipt and optional proof artifacts.
@@ -67,6 +69,19 @@ Use `check_public_git_metadata: true` with `public_git_metadata_mode:
 introduced` for established public repos whose old commits or tags are not
 noreply-clean. Keep `full` mode for newly scrubbed repos and release/publication
 checks where all selected refs and tags are expected to be clean.
+
+When the metadata check is part of a receipt, represent it as a normal evidence
+item instead of a new security field:
+
+```json
+{
+  "id": "public-git-metadata",
+  "kind": "security",
+  "status": "passed",
+  "required": true,
+  "summary": "Public git metadata checked in introduced mode against origin/main..HEAD; legacy history and tags were not in scope."
+}
+```
 
 Caller workflows should grant explicit read permissions to the reusable workflow
 job. Without the `contents: read` and `actions: read` stanza, GitHub can fail a
@@ -100,7 +115,7 @@ jobs:
         env:
           PUBLIC_METADATA_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           PUBLIC_METADATA_BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'origin/main' }}
-        run: python3 scripts/proof_pr.py check-public-git-metadata --base-ref "$PUBLIC_METADATA_BASE_REF" --ref "$PUBLIC_METADATA_REF"
+        run: python3 scripts/proof_pr.py check-public-git-metadata --base-ref "$PUBLIC_METADATA_BASE_REF" --ref "$PUBLIC_METADATA_REF" --summary-format text
       - name: Validate receipt
         run: python3 scripts/proof_pr.py validate proof-pr.json
       # Enable after dogfooding if the repo wants a non-blocking ready check first:

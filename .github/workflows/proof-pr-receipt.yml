@@ -118,13 +118,25 @@ jobs:
             if [ -z "$base_ref" ]; then
               base_ref="origin/$PUBLIC_METADATA_DEFAULT_BRANCH"
             fi
-            proof-pr check-public-git-metadata --base-ref "$base_ref" --ref "$PUBLIC_METADATA_REF"
+            proof-pr check-public-git-metadata --base-ref "$base_ref" --ref "$PUBLIC_METADATA_REF" --summary-format text
+            tag_scope="skipped"
           elif [ "$PUBLIC_METADATA_MODE" = "full" ]; then
-            proof-pr check-public-git-metadata --ref "$PUBLIC_METADATA_REF" --ref 'refs/tags/v*'
+            proof-pr check-public-git-metadata --ref "$PUBLIC_METADATA_REF" --ref 'refs/tags/v*' --summary-format text
+            base_ref="not_applicable"
+            tag_scope="refs/tags/v*"
           else
             echo "invalid public_git_metadata_mode: $PUBLIC_METADATA_MODE" >&2
             exit 2
           fi
+          {
+            echo "## public git metadata"
+            echo
+            echo "- status: passed"
+            echo "- mode: \`$PUBLIC_METADATA_MODE\`"
+            echo "- ref: \`$PUBLIC_METADATA_REF\`"
+            echo "- base_ref: \`$base_ref\`"
+            echo "- tag_scope: \`$tag_scope\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Validate receipt
         env:

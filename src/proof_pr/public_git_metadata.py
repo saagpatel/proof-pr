@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import subprocess
 import sys
@@ -21,6 +22,39 @@ class Finding:
     field: str
     name: str
     email: str
+
+
+@dataclass(frozen=True)
+class CheckSummary:
+    status: str
+    mode: str
+    refs: list[str]
+    base_ref: str | None
+    tag_scope: str
+    allowed_email_regex: str
+    finding_count: int
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "status": self.status,
+            "mode": self.mode,
+            "refs": self.refs,
+            "base_ref": self.base_ref or "not_applicable",
+            "tag_scope": self.tag_scope,
+            "allowed_email_regex": self.allowed_email_regex,
+            "finding_count": self.finding_count,
+        }
+
+    def as_text(self) -> str:
+        return (
+            "metadata scope: "
+            f"status={self.status} "
+            f"mode={self.mode} "
+            f"refs={','.join(self.refs)} "
+            f"base_ref={self.base_ref or 'not_applicable'} "
+            f"tag_scope={self.tag_scope} "
+            f"findings={self.finding_count}"
+        )
 
 
 def _git(cwd: Path, *args: str) -> str:
@@ -145,6 +179,28 @@ def check_metadata(
     return findings
 
 
+def build_summary(args: argparse.Namespace, findings: list[Finding], status: str) -> CheckSummary:
+    base_ref = args.base_ref or None
+    return CheckSummary(
+        status=status,
+        mode="introduced" if base_ref else "full",
+        refs=args.refs or ["HEAD"],
+        base_ref=base_ref,
+        tag_scope="skipped" if args.no_tags or base_ref else "selected_refs",
+        allowed_email_regex=args.allowed_email_regex,
+        finding_count=len(findings),
+    )
+
+
+def print_summary(summary: CheckSummary, summary_format: str) -> None:
+    if summary_format == "none":
+        return
+    if summary_format == "json":
+        print(json.dumps(summary.as_dict(), sort_keys=True))
+        return
+    print(summary.as_text())
+
+
 def check_public_git_metadata(args: argparse.Namespace) -> int:
     try:
         findings = check_metadata(
@@ -164,9 +220,11 @@ def check_public_git_metadata(args: argparse.Namespace) -> int:
                 f"{finding.ref}: {finding.object_id}: {finding.field} "
                 f"{finding.name} <{finding.email}> is not allowed"
             )
+        print_summary(build_summary(args, findings, "failed"), args.summary_format)
         return 1
 
     print("public git metadata ok")
+    print_summary(build_summary(args, findings, "passed"), args.summary_format)
     return 0
 
 
@@ -198,6 +256,12 @@ def add_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) 
         "--no-tags",
         action="store_true",
         help="Skip annotated tagger metadata checks for selected tag refs.",
+    )
+    parser.add_argument(
+        "--summary-format",
+        choices=("none", "text", "json"),
+        default="none",
+        help="Print a compact scope summary after the check result.",
     )
     parser.set_defaults(func=check_public_git_metadata)
 
