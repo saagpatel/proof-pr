@@ -7,12 +7,14 @@ dogfooding.
 ## Action Responsibilities
 
 1. Check out the PR.
-2. Validate `proof-pr.json` with `scripts/proof_pr.py validate`.
-3. Upload `proof-pr.json` and `proof-pr-artifacts/` when present.
-4. Render the Markdown proof block into the job summary.
-5. Optionally run `proof-pr finalize --require-ready` after dogfooding proves the
+2. Optionally gate public git metadata for repos that require noreply-only live
+   history/tags.
+3. Validate `proof-pr.json` with `scripts/proof_pr.py validate`.
+4. Upload `proof-pr.json` and `proof-pr-artifacts/` when present.
+5. Render the Markdown proof block into the job summary.
+6. Optionally run `proof-pr finalize --require-ready` after dogfooding proves the
    receipt is ready to act as a soft gate.
-6. Leave PR body updates and required-check enforcement disabled for v0.
+7. Leave PR body updates and required-check enforcement disabled for v0.
 
 ## Reusable Workflow
 
@@ -39,12 +41,16 @@ jobs:
       proof_pr_ref: v0.2.0
       artifact_name: proof-pr
       artifact_glob: proof-pr-artifacts/**
+      check_public_git_metadata: false
+      # For pull_request callers that enable the metadata gate, prefer:
+      # public_git_metadata_ref: ${{ github.event.pull_request.head.sha }}
 ```
 
 The workflow:
 
 - checks out the caller repo;
 - installs `proof-pr` from the requested public git ref;
+- optionally checks public git metadata for the configured ref and version tags;
 - validates the receipt;
 - renders the proof block into the job summary, anchored to the GitHub run SHA;
 - uploads the receipt and optional proof artifacts.
@@ -79,6 +85,12 @@ jobs:
       actions: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check public git metadata
+        env:
+          PUBLIC_METADATA_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: python3 scripts/proof_pr.py check-public-git-metadata --ref "$PUBLIC_METADATA_REF" --ref 'refs/tags/v*'
       - name: Validate receipt
         run: python3 scripts/proof_pr.py validate proof-pr.json
       # Enable after dogfooding if the repo wants a non-blocking ready check first:

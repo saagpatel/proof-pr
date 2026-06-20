@@ -9,6 +9,7 @@ Commands:
 - finalize: update the overall status and review decision from collected proof.
 - render: print the Markdown PR proof block for a receipt.
 - validate: validate receipts using the local validator.
+- check-public-git-metadata: fail when public git metadata leaks non-noreply emails.
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ from pathlib import Path
 from typing import Any
 
 from . import __version__
+from . import public_git_metadata
 from .validate_receipts import validate_receipt
 
 STATUSES = {
@@ -743,6 +745,8 @@ def build_parser() -> argparse.ArgumentParser:
     validate = subparsers.add_parser("validate", help="Validate proof-pr receipts")
     validate.add_argument("receipts", nargs="+")
     validate.set_defaults(func=cmd_validate)
+
+    public_git_metadata.add_parser(subparsers)
 
     return parser
 

@@ -7,6 +7,8 @@ Use this checklist before tagging a `proof-pr` release.
 - Confirm `main` is clean and synced with `origin/main`.
 - Confirm `pyproject.toml` and `src/proof_pr/__init__.py` carry the intended
   version.
+- Confirm the `proof-pr` workflow is passing on `main`; it gates public git
+  metadata for the PR head or main workflow SHA plus version tags.
 - Review `PUBLICATION.md` for public-safety posture changes.
 
 ## Local Verification
@@ -14,9 +16,13 @@ Use this checklist before tagging a `proof-pr` release.
 ```bash
 PYTHONDONTWRITEBYTECODE=1 python3 scripts/proof_pr.py validate examples/pr-*.json
 python3 scripts/check_public_git_metadata.py --ref HEAD --ref 'refs/tags/v*'
-python3 -m pip install .
-proof-pr validate examples/pr-*.json
-proof-pr render examples/pr-024-sample-dashboard-rollups.json
+tmpdir=$(mktemp -d)
+python3 -m venv "$tmpdir/venv"
+"$tmpdir/venv/bin/python" -m pip install .
+"$tmpdir/venv/bin/proof-pr" check-public-git-metadata --ref HEAD --ref 'refs/tags/v*'
+"$tmpdir/venv/bin/proof-pr" validate examples/pr-*.json
+"$tmpdir/venv/bin/proof-pr" render examples/pr-024-sample-dashboard-rollups.json
+rm -rf "$tmpdir"
 gitleaks detect --source . --no-banner --redact --verbose
 ```
 

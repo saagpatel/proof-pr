@@ -12,8 +12,14 @@ jobs:
       actions: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Install proof-pr
         run: python3 -m pip install .
+      - name: Check public git metadata
+        env:
+          PUBLIC_METADATA_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: proof-pr check-public-git-metadata --ref "$PUBLIC_METADATA_REF" --ref 'refs/tags/v*'
       - name: Validate example receipts
         run: proof-pr validate examples/pr-*.json
       - name: Render sample proof summary

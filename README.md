@@ -25,6 +25,8 @@ teams later, but v0 optimizes for fast human review of agent-created changes.
   adoption, triggers, and enforcement modes.
 - `.github/workflows/proof-pr-receipt.yml` - reusable workflow that validates a
   receipt, uploads proof artifacts, and writes a job summary.
+- `.github/workflows/proof-pr-validate.yml` - self-check workflow that validates
+  receipts and gates public git metadata for live history/tags.
 - `docs/dogfood-sample-dashboard.md` - first local dogfood run notes.
 
 ## Validate
@@ -34,6 +36,7 @@ python3 scripts/validate_receipts.py examples/pr-*.json
 python3 scripts/proof_pr.py validate examples/pr-*.json
 python3 scripts/proof_pr.py render examples/pr-024-sample-dashboard-rollups.json
 python3 scripts/check_public_git_metadata.py --ref HEAD --ref 'refs/tags/v*'
+proof-pr check-public-git-metadata --ref HEAD --ref 'refs/tags/v*'
 ```
 
 The validator is intentionally lightweight. It checks structure, required
@@ -42,9 +45,11 @@ claim is true; the receipt author still owns honest evidence.
 
 ## Install
 
-From a local checkout:
+From a local checkout inside a virtual environment:
 
 ```bash
+python3 -m venv .venv
+. .venv/bin/activate
 python3 -m pip install .
 proof-pr validate examples/pr-*.json
 proof-pr render examples/pr-024-sample-dashboard-rollups.json
@@ -68,6 +73,7 @@ python3 scripts/proof_pr.py render proof-pr.json
 python3 scripts/proof_pr.py render proof-pr.json --head-sha <pr-head-sha>
 python3 scripts/proof_pr.py render --full-commands proof-pr.json
 python3 scripts/proof_pr.py validate proof-pr.json
+proof-pr check-public-git-metadata --ref HEAD --ref 'refs/tags/v*'
 ```
 
 The CLI is local-only in v0. It can draft receipt identity and diff stats, run
@@ -89,3 +95,7 @@ receipt, blocked required proof keeps it in revise, skipped/stale/partial
 required proof remains partial, and unresolved limitations prevent a ready
 decision unless `--allow-limitations` is set. The default draft limitation is
 cleared during finalization after evidence has been collected.
+
+`check-public-git-metadata` is a public-release guardrail. It fails when selected
+refs contain commit or annotated-tag email metadata outside GitHub noreply
+patterns, and it is enforced by this repository's self-check workflow.

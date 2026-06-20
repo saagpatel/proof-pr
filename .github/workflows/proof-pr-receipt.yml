@@ -23,6 +23,16 @@ on:
         required: false
         type: string
         default: proof-pr-artifacts/**
+      check_public_git_metadata:
+        description: Fail when selected refs use non-noreply public git email metadata.
+        required: false
+        type: boolean
+        default: false
+      public_git_metadata_ref:
+        description: Ref to inspect when check_public_git_metadata is true. Defaults to the workflow SHA.
+        required: false
+        type: string
+        default: ""
   workflow_dispatch:
     inputs:
       receipt_path:
@@ -45,6 +55,16 @@ on:
         required: false
         type: string
         default: proof-pr-artifacts/**
+      check_public_git_metadata:
+        description: Fail when selected refs use non-noreply public git email metadata.
+        required: false
+        type: boolean
+        default: false
+      public_git_metadata_ref:
+        description: Ref to inspect when check_public_git_metadata is true. Defaults to the workflow SHA.
+        required: false
+        type: string
+        default: ""
 
 jobs:
   validate-receipt:
@@ -54,9 +74,17 @@ jobs:
       actions: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install proof-pr
         run: python3 -m pip install "git+https://github.com/saagpatel/proof-pr.git@${{ inputs.proof_pr_ref }}"
+
+      - name: Check public git metadata
+        if: ${{ inputs.check_public_git_metadata }}
+        env:
+          PUBLIC_METADATA_REF: ${{ inputs.public_git_metadata_ref || github.sha }}
+        run: proof-pr check-public-git-metadata --ref "$PUBLIC_METADATA_REF" --ref 'refs/tags/v*'
 
       - name: Validate receipt
         env:
