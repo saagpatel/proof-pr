@@ -1,0 +1,20 @@
+name: proof-pr
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate-proof:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install proof-pr
+        run: python3 -m pip install .
+      - name: Validate example receipts
+        run: proof-pr validate examples/pr-*.json
+      - name: Render sample proof summary
+        run: proof-pr render examples/pr-024-sample-dashboard-rollups.json >> "$GITHUB_STEP_SUMMARY"

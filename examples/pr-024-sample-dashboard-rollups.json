@@ -1,0 +1,114 @@
+{
+  "schema_version": "proof-pr.v1",
+  "receipt_id": "example-sample-dashboard-pr-24-6d2f94b",
+  "generated_at": "2026-06-20T00:00:00Z",
+  "subject": {
+    "repo": "example/sample-dashboard",
+    "pr_number": 24,
+    "pr_url": "https://github.com/example/sample-dashboard/pull/24",
+    "base_ref": "main",
+    "base_sha": "ec037db84ad5821d5c55631c726fb8cb7319b383",
+    "head_ref": "refactor/consume-truth-rollups",
+    "head_sha": "6d2f94be1b3d1b18ffae481d30e501f73753a765"
+  },
+  "producer": {
+    "tool": "proof-pr",
+    "version": "0.1.0-draft",
+    "agent": "codex",
+    "mode": "manual"
+  },
+  "risk": {
+    "tier": "T2",
+    "reasons": [
+      "truth schema consumer behavior",
+      "frontend views read new auditor-emitted fields",
+      "Rust history path changed"
+    ],
+    "changed_surfaces": ["frontend", "types", "rust-ipc", "cross-repo schema"]
+  },
+  "change": {
+    "summary": "Consumes producer-emitted risk/security rollups and removes duplicated dashboard logic.",
+    "files_touched": [
+      "src/types.ts",
+      "src/views/RiskSecurity.tsx",
+      "src/views/DashboardTable.tsx",
+      "src/views/OpsView.tsx",
+      "src/views/ProjectDetail.tsx",
+      "src-tauri/src/lib.rs"
+    ],
+    "diff_stats": {
+      "files": 0,
+      "additions": 0,
+      "deletions": 56
+    },
+    "scope_notes": "Backward compatible with pre-0.7.0 snapshots via fallback paths."
+  },
+  "evidence": [
+    {
+      "id": "typecheck",
+      "kind": "typecheck",
+      "command": ["pnpm", "typecheck"],
+      "status": "passed",
+      "required": true,
+      "summary": "TypeScript typecheck clean."
+    },
+    {
+      "id": "tests",
+      "kind": "test",
+      "command": ["pnpm", "test"],
+      "status": "passed",
+      "required": true,
+      "summary": "67/67 tests pass."
+    },
+    {
+      "id": "rust-check",
+      "kind": "build",
+      "command": ["cargo", "check"],
+      "status": "passed",
+      "required": true,
+      "summary": "Rust check clean."
+    },
+    {
+      "id": "screenshot",
+      "kind": "screenshot",
+      "status": "not_applicable",
+      "required": false,
+      "summary": "No intended visual layout change; logic consumes emitted fields.",
+      "reason": "No UI presentation delta claimed"
+    },
+    {
+      "id": "compatibility",
+      "kind": "manual-review",
+      "status": "passed",
+      "required": true,
+      "summary": "PR body documents optional 0.7.0 fields and fallback for historical 0.6.0 snapshots."
+    }
+  ],
+  "security": {
+    "secrets_scan": {
+      "status": "not_applicable",
+      "summary": "No secret-bearing files or credential paths changed."
+    },
+    "permission_diff": {
+      "status": "not_applicable",
+      "summary": "No workflows, Tauri permissions, or external write permissions changed."
+    },
+    "redaction": {
+      "status": "not_applicable",
+      "summary": "No screenshots attached; no private sample artifacts included."
+    }
+  },
+  "rollback": {
+    "status": "documented",
+    "path": "Revert PR #24; fallback computation remains available for older snapshots.",
+    "notes": "Cross-repo sequencing depends on the upstream producer PR for live rollups."
+  },
+  "artifacts": [],
+  "limitations": [
+    "Historical hand-authored receipt; command results taken from PR body rather than rerun locally."
+  ],
+  "overall": {
+    "status": "passed",
+    "review_decision": "ready"
+  }
+}

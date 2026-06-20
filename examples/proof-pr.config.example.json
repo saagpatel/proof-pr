@@ -1,0 +1,59 @@
+{
+  "risk": {
+    "tier": "T2",
+    "reasons": [
+      "truth schema consumer behavior",
+      "cross-repo compatibility"
+    ],
+    "changed_surfaces": [
+      "frontend",
+      "types",
+      "cross-repo schema"
+    ]
+  },
+  "change": {
+    "summary": "Consume producer-emitted truth fields and remove duplicated consumer logic.",
+    "scope_notes": "Use for a producer -> dashboard truth/schema dogfood PR."
+  },
+  "security": {
+    "secrets_scan": {
+      "status": "not_applicable",
+      "summary": "No secret-bearing files expected; update if workflow/env/config files change."
+    },
+    "permission_diff": {
+      "status": "not_applicable",
+      "summary": "No workflow, Tauri permission, connector, or agent-access change expected."
+    },
+    "redaction": {
+      "status": "not_applicable",
+      "summary": "No screenshots attached by default; mark fixture-backed or redacted if added."
+    }
+  },
+  "rollback": {
+    "status": "documented",
+    "path": "Revert the PR; keep producer/consumer fallback behavior documented."
+  },
+  "commands": [
+    {
+      "id": "typecheck",
+      "kind": "typecheck",
+      "command": ["pnpm", "typecheck"],
+      "required": true,
+      "summary": "TypeScript typecheck for the dashboard app."
+    },
+    {
+      "id": "tests",
+      "kind": "test",
+      "command": ["pnpm", "test"],
+      "required": true,
+      "summary": "Dashboard app test suite."
+    },
+    {
+      "id": "rust-check",
+      "kind": "build",
+      "command": ["cargo", "check", "--manifest-path", "src-tauri/Cargo.toml"],
+      "required": true,
+      "summary": "Tauri/Rust shell check for IPC and file-load changes."
+    }
+  ]
+}

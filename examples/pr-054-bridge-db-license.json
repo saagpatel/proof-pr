@@ -1,0 +1,87 @@
+{
+  "schema_version": "proof-pr.v1",
+  "receipt_id": "saagpatel-bridge-db-pr-54-a5c30e9",
+  "generated_at": "2026-06-20T00:00:00Z",
+  "subject": {
+    "repo": "saagpatel/bridge-db",
+    "pr_number": 54,
+    "pr_url": "https://github.com/saagpatel/bridge-db/pull/54",
+    "base_ref": "main",
+    "base_sha": "5569ac5365b52f728ce64bc34855afddc9b6f412",
+    "head_ref": "chore/add-mit-license",
+    "head_sha": "a5c30e9a49f474cbf569ecb9630fffd18e65421c"
+  },
+  "producer": {
+    "tool": "proof-pr",
+    "version": "0.1.0-draft",
+    "agent": "codex",
+    "mode": "manual"
+  },
+  "risk": {
+    "tier": "T0",
+    "reasons": ["license-only public-readiness change"],
+    "changed_surfaces": ["license", "repository metadata"]
+  },
+  "change": {
+    "summary": "Adds an MIT LICENSE file for public release readiness.",
+    "files_touched": ["LICENSE"],
+    "diff_stats": {
+      "files": 1,
+      "additions": 1,
+      "deletions": 0
+    },
+    "scope_notes": "No executable behavior changed."
+  },
+  "evidence": [
+    {
+      "id": "diff-review",
+      "kind": "diff-review",
+      "status": "passed",
+      "required": true,
+      "summary": "PR body states this adds MIT LICENSE only."
+    },
+    {
+      "id": "repo-tests",
+      "kind": "test",
+      "status": "not_applicable",
+      "required": false,
+      "summary": "No executable behavior changed.",
+      "reason": "T0 license-only change"
+    },
+    {
+      "id": "screenshots",
+      "kind": "screenshot",
+      "status": "not_applicable",
+      "required": false,
+      "summary": "No UI or visual artifact changed.",
+      "reason": "No UI surface"
+    }
+  ],
+  "security": {
+    "secrets_scan": {
+      "status": "not_applicable",
+      "summary": "Static license text; no secret-bearing surface."
+    },
+    "permission_diff": {
+      "status": "not_applicable",
+      "summary": "No permissions, workflows, or agent access changed."
+    },
+    "redaction": {
+      "status": "not_applicable",
+      "summary": "No screenshots or private local data included."
+    }
+  },
+  "rollback": {
+    "status": "documented",
+    "path": "Revert PR #54 or remove LICENSE file."
+  },
+  "artifacts": [],
+  "limitations": [
+    "Historical hand-authored receipt based on PR body metadata, not a live CLI collection."
+  ],
+  "overall": {
+    "status": "passed",
+    "review_decision": "ready"
+  }
+}
+

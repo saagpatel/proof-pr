@@ -1,0 +1,249 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.proof-pr/schemas/proof-pr.v1.schema.json",
+  "title": "proof-pr.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "receipt_id",
+    "generated_at",
+    "subject",
+    "producer",
+    "risk",
+    "change",
+    "evidence",
+    "security",
+    "rollback",
+    "artifacts",
+    "limitations",
+    "overall"
+  ],
+  "properties": {
+    "schema_version": { "const": "proof-pr.v1" },
+    "receipt_id": { "type": "string", "minLength": 1 },
+    "generated_at": { "type": "string", "minLength": 1 },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repo", "base_ref", "base_sha", "head_ref", "head_sha"],
+      "properties": {
+        "repo": { "type": "string", "minLength": 1 },
+        "pr_number": { "type": ["integer", "null"], "minimum": 1 },
+        "pr_url": { "type": ["string", "null"] },
+        "base_ref": { "type": "string", "minLength": 1 },
+        "base_sha": { "type": "string", "minLength": 7 },
+        "head_ref": { "type": "string", "minLength": 1 },
+        "head_sha": { "type": "string", "minLength": 7 }
+      }
+    },
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool", "version", "agent", "mode"],
+      "properties": {
+        "tool": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "agent": {
+          "enum": ["codex", "claude-code", "manual", "github-actions", "unknown"]
+        },
+        "mode": { "enum": ["local", "ci", "manual"] }
+      }
+    },
+    "risk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tier", "reasons", "changed_surfaces"],
+      "properties": {
+        "tier": { "enum": ["T0", "T1", "T2", "T3", "T4"] },
+        "reasons": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "changed_surfaces": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["summary", "files_touched", "diff_stats"],
+      "properties": {
+        "summary": { "type": "string", "minLength": 1 },
+        "files_touched": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "diff_stats": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["files", "additions", "deletions"],
+          "properties": {
+            "files": { "type": "integer", "minimum": 0 },
+            "additions": { "type": "integer", "minimum": 0 },
+            "deletions": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "scope_notes": { "type": "string" }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/evidence_item" }
+    },
+    "security": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["secrets_scan", "permission_diff", "redaction"],
+      "properties": {
+        "secrets_scan": { "$ref": "#/$defs/posture" },
+        "permission_diff": { "$ref": "#/$defs/posture" },
+        "redaction": { "$ref": "#/$defs/posture" }
+      }
+    },
+    "rollback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "path"],
+      "properties": {
+        "status": {
+          "enum": [
+            "documented",
+            "tested",
+            "partial",
+            "blocked",
+            "not_applicable"
+          ]
+        },
+        "path": { "type": "string", "minLength": 1 },
+        "notes": { "type": "string" }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/artifact" }
+    },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "overall": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "review_decision"],
+      "properties": {
+        "status": {
+          "enum": [
+            "passed",
+            "passed_with_warnings",
+            "failed",
+            "blocked",
+            "skipped",
+            "stale",
+            "partial",
+            "not_applicable"
+          ]
+        },
+        "review_decision": {
+          "enum": ["ready", "ready_with_operator_awareness", "revise", "reject"]
+        }
+      }
+    }
+  },
+  "$defs": {
+    "status": {
+      "enum": [
+        "passed",
+        "passed_with_warnings",
+        "failed",
+        "blocked",
+        "skipped",
+        "stale",
+        "partial",
+        "not_applicable"
+      ]
+    },
+    "evidence_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "status", "required", "summary"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": {
+          "enum": [
+            "diff-review",
+            "repo-native",
+            "test",
+            "lint",
+            "typecheck",
+            "build",
+            "screenshot",
+            "health",
+            "smoke",
+            "security",
+            "permission-diff",
+            "attestation",
+            "release",
+            "manual-review"
+          ]
+        },
+        "command": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "status": { "$ref": "#/$defs/status" },
+        "required": { "type": "boolean" },
+        "summary": { "type": "string", "minLength": 1 },
+        "artifact_ids": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "freshness_hours": { "type": ["integer", "null"], "minimum": 0 },
+        "reason": { "type": "string" }
+      }
+    },
+    "posture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "summary"],
+      "properties": {
+        "status": { "$ref": "#/$defs/status" },
+        "summary": { "type": "string", "minLength": 1 },
+        "artifact_ids": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "reason": { "type": "string" }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "path_or_url", "description", "required"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": {
+          "enum": [
+            "log",
+            "screenshot",
+            "json",
+            "report",
+            "proof-package",
+            "verification-result",
+            "attestation",
+            "summary"
+          ]
+        },
+        "path_or_url": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "sha256": { "type": ["string", "null"] },
+        "required": { "type": "boolean" },
+        "external": { "type": "boolean" }
+      }
+    }
+  }
+}
+

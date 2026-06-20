@@ -1,0 +1,110 @@
+{
+  "schema_version": "proof-pr.v1",
+  "receipt_id": "saagpatel-bridge-db-pr-55-a0929a3",
+  "generated_at": "2026-06-20T00:00:00Z",
+  "subject": {
+    "repo": "saagpatel/bridge-db",
+    "pr_number": 55,
+    "pr_url": "https://github.com/saagpatel/bridge-db/pull/55",
+    "base_ref": "main",
+    "base_sha": "46e33b7b57f953f8fb57138c7dba6cbc52ca3a66",
+    "head_ref": "fix/schema-convergence-concurrency-tests",
+    "head_sha": "a0929a3cc03150734a2dd4fa72e6e30e0a14d1dd"
+  },
+  "producer": {
+    "tool": "proof-pr",
+    "version": "0.1.0-draft",
+    "agent": "codex",
+    "mode": "manual"
+  },
+  "risk": {
+    "tier": "T3",
+    "reasons": [
+      "schema convergence",
+      "migration ladder refactor",
+      "WAL concurrent-writer behavior"
+    ],
+    "changed_surfaces": ["sqlite schema", "migration", "concurrency", "tests"]
+  },
+  "change": {
+    "summary": "Adds schema convergence and concurrent-writer tests while replacing ensure_schema's migration ladder with an ordered list.",
+    "files_touched": [
+      "src/bridge_db/db.py",
+      "tests/test_db.py",
+      "tests/test_migration.py"
+    ],
+    "diff_stats": {
+      "files": 0,
+      "additions": 0,
+      "deletions": 0
+    },
+    "scope_notes": "Behavior-preserving refactor guarded by fresh-install and migrated-from-v0 convergence tests."
+  },
+  "evidence": [
+    {
+      "id": "tests",
+      "kind": "test",
+      "status": "passed",
+      "required": true,
+      "summary": "279 tests pass."
+    },
+    {
+      "id": "pyright",
+      "kind": "typecheck",
+      "status": "passed",
+      "required": true,
+      "summary": "Pyright strict clean."
+    },
+    {
+      "id": "ruff",
+      "kind": "lint",
+      "status": "passed",
+      "required": true,
+      "summary": "Ruff clean."
+    },
+    {
+      "id": "wal-concurrency",
+      "kind": "test",
+      "status": "passed",
+      "required": true,
+      "summary": "PR body names a real WAL concurrent-writer test."
+    },
+    {
+      "id": "health-dogfood",
+      "kind": "health",
+      "status": "skipped",
+      "required": false,
+      "summary": "PR body did not include a post-change bridge-db --status or --dogfood receipt.",
+      "reason": "Historical PR sampled after merge; no fresh local health run was collected for this receipt."
+    }
+  ],
+  "security": {
+    "secrets_scan": {
+      "status": "not_applicable",
+      "summary": "No credential or secret handling surface changed."
+    },
+    "permission_diff": {
+      "status": "not_applicable",
+      "summary": "No workflows, permissions, or external write access changed."
+    },
+    "redaction": {
+      "status": "not_applicable",
+      "summary": "No screenshots or private local data included."
+    }
+  },
+  "rollback": {
+    "status": "partial",
+    "path": "Revert PR #55; migration rollback was not separately rehearsed in the PR body.",
+    "notes": "Schema/concurrency changes warrant fresh --doctor/--status/--dogfood proof in future live T3 receipts."
+  },
+  "artifacts": [],
+  "limitations": [
+    "Historical hand-authored receipt based on PR body metadata.",
+    "No fresh local bridge-db health receipt was collected."
+  ],
+  "overall": {
+    "status": "passed_with_warnings",
+    "review_decision": "ready_with_operator_awareness"
+  }
+}
+

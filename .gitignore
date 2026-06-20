@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+proof-pr.json
+build/
+dist/
+*.egg-info/

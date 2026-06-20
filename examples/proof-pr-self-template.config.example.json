@@ -1,0 +1,51 @@
+{
+  "risk": {
+    "tier": "T0",
+    "reasons": [
+      "pull request template and self-dogfood example only",
+      "no runtime behavior changed"
+    ],
+    "changed_surfaces": [
+      "github metadata",
+      "examples"
+    ]
+  },
+  "change": {
+    "summary": "Add a PR template with a proof-pr block placeholder and a self-dogfood config.",
+    "scope_notes": "Use for low-risk proof-pr repository metadata/docs changes."
+  },
+  "security": {
+    "secrets_scan": {
+      "status": "not_applicable",
+      "summary": "No secret-bearing source, workflow, or environment file changed."
+    },
+    "permission_diff": {
+      "status": "not_applicable",
+      "summary": "No workflow permissions, token scopes, or agent-access settings changed."
+    },
+    "redaction": {
+      "status": "not_applicable",
+      "summary": "No screenshots or captured UI artifacts are attached."
+    }
+  },
+  "rollback": {
+    "status": "documented",
+    "path": "Revert the PR to remove the template/config additions."
+  },
+  "commands": [
+    {
+      "id": "receipt-examples",
+      "kind": "test",
+      "command": [
+        "python3",
+        "scripts/proof_pr.py",
+        "validate",
+        "examples/pr-024-sample-dashboard-rollups.json",
+        "examples/pr-054-bridge-db-license.json",
+        "examples/pr-055-bridge-db-schema-concurrency.json"
+      ],
+      "required": true,
+      "summary": "Validate checked-in proof-pr example receipts."
+    }
+  ]
+}
