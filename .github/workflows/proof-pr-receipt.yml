@@ -194,10 +194,13 @@ jobs:
         env:
           RECEIPT_PATH: ${{ inputs.receipt_path }}
         run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/proof-pr-upload"
+          proof-pr render "$RECEIPT_PATH" --head-sha "${GITHUB_SHA}" > "$RUNNER_TEMP/proof-pr-upload/proof-pr-summary.md"
           {
             echo "## proof-pr"
             echo
-            proof-pr render "$RECEIPT_PATH" --head-sha "${GITHUB_SHA}"
+            cat "$RUNNER_TEMP/proof-pr-upload/proof-pr-summary.md"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Stage proof bundle
