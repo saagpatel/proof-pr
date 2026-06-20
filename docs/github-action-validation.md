@@ -11,8 +11,10 @@ dogfooding.
    history/tags.
 3. Validate `proof-pr.json` with `scripts/proof_pr.py validate`.
 4. Write advisory `proof-pr receipt-hygiene` output into the job summary.
-5. Upload `proof-pr.json` and `proof-pr-artifacts/` when present.
-6. Render the Markdown proof block into the job summary.
+5. Render the Markdown proof block into the job summary and a downloadable
+   `proof-pr-summary.md` artifact.
+6. Upload `proof-pr.json`, `proof-pr-summary.md`, and `proof-pr-artifacts/`
+   when present.
 7. Optionally run `proof-pr finalize --require-ready` after dogfooding proves the
    receipt is ready to act as a soft gate.
 8. Leave PR body updates and required-check enforcement disabled for v0.
@@ -64,7 +66,8 @@ The workflow:
 - writes receipt hygiene suggestions to the job summary in advisory mode by
   default;
 - renders the proof block into the job summary, anchored to the GitHub run SHA;
-- uploads the receipt and optional proof artifacts.
+- uploads the receipt, rendered `proof-pr-summary.md`, and optional proof
+  artifacts.
 
 Use a released tag for both the reusable workflow ref and `proof_pr_ref` when a
 consumer repo wants stable behavior. Keep required-check enforcement disabled

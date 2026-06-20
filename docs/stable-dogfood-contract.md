@@ -15,7 +15,8 @@ The stable dogfood contract is:
   render PR/check summaries with an explicit final head SHA;
 - the reusable workflow validates a committed receipt;
 - the reusable workflow writes the rendered proof block to the job summary;
-- the reusable workflow uploads the receipt and optional artifacts;
+- the reusable workflow uploads the receipt, rendered `proof-pr-summary.md`,
+  and optional artifacts;
 - consumer workflows use explicit read permissions;
 - enforcement remains advisory unless a repo opts into a soft required check.
 
@@ -132,6 +133,11 @@ copyable receipt patterns from the CLI.
 `collect` attach optional `producer.example_pattern` metadata. `render` displays
 that pattern as authoring guidance so proof authors can start from
 `proof-pr examples --json` without turning the copied pattern into evidence.
+
+`v0.2.13` keeps the same receipt contract and makes the reusable workflow upload
+the rendered proof block as `proof-pr-summary.md` alongside the receipt, so
+reviewers can inspect `Pattern:` and other rendered claims from the proof
+artifact bundle.
 
 Established public repos should start with `public_git_metadata_mode:
 introduced`, which checks only commits introduced by the workflow ref relative
