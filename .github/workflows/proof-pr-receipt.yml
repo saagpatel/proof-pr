@@ -23,6 +23,11 @@ on:
         required: false
         type: string
         default: proof-pr-artifacts/**
+      proof_summary_filename:
+        description: Filename for the rendered proof block inside the uploaded artifact bundle.
+        required: false
+        type: string
+        default: proof-pr-summary.md
       check_public_git_metadata:
         description: Fail when selected refs use non-noreply public git email metadata.
         required: false
@@ -75,6 +80,11 @@ on:
         required: false
         type: string
         default: proof-pr-artifacts/**
+      proof_summary_filename:
+        description: Filename for the rendered proof block inside the uploaded artifact bundle.
+        required: false
+        type: string
+        default: proof-pr-summary.md
       check_public_git_metadata:
         description: Fail when selected refs use non-noreply public git email metadata.
         required: false
@@ -193,14 +203,21 @@ jobs:
       - name: Render proof summary
         env:
           RECEIPT_PATH: ${{ inputs.receipt_path }}
+          PROOF_SUMMARY_FILENAME: ${{ inputs.proof_summary_filename }}
         run: |
           set -euo pipefail
+          case "$PROOF_SUMMARY_FILENAME" in
+            ""|*/*|*\\*)
+              echo "invalid proof_summary_filename: $PROOF_SUMMARY_FILENAME" >&2
+              exit 2
+              ;;
+          esac
           mkdir -p "$RUNNER_TEMP/proof-pr-upload"
-          proof-pr render "$RECEIPT_PATH" --head-sha "${GITHUB_SHA}" > "$RUNNER_TEMP/proof-pr-upload/proof-pr-summary.md"
+          proof-pr render "$RECEIPT_PATH" --head-sha "${GITHUB_SHA}" > "$RUNNER_TEMP/proof-pr-upload/$PROOF_SUMMARY_FILENAME"
           {
             echo "## proof-pr"
             echo
-            cat "$RUNNER_TEMP/proof-pr-upload/proof-pr-summary.md"
+            cat "$RUNNER_TEMP/proof-pr-upload/$PROOF_SUMMARY_FILENAME"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Stage proof bundle

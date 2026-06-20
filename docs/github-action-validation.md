@@ -44,6 +44,7 @@ jobs:
       proof_pr_ref: v0.2.7
       artifact_name: proof-pr
       artifact_glob: proof-pr-artifacts/**
+      proof_summary_filename: proof-pr-summary.md
       check_public_git_metadata: false
       receipt_hygiene: true
       receipt_hygiene_strict: false
@@ -66,8 +67,9 @@ The workflow:
 - writes receipt hygiene suggestions to the job summary in advisory mode by
   default;
 - renders the proof block into the job summary, anchored to the GitHub run SHA;
-- uploads the receipt, rendered `proof-pr-summary.md`, and optional proof
-  artifacts.
+- uploads the receipt, rendered proof summary, and optional proof artifacts.
+  The summary filename defaults to `proof-pr-summary.md` and can be customized
+  with `proof_summary_filename`.
 
 Use a released tag for both the reusable workflow ref and `proof_pr_ref` when a
 consumer repo wants stable behavior. Keep required-check enforcement disabled
