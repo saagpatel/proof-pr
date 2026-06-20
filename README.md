@@ -74,6 +74,7 @@ python3 scripts/proof_pr.py render proof-pr.json --head-sha <pr-head-sha>
 python3 scripts/proof_pr.py render --full-commands proof-pr.json
 python3 scripts/proof_pr.py receipt-hygiene proof-pr.json
 python3 scripts/proof_pr.py receipt-hygiene proof-pr.json --explain
+python3 scripts/proof_pr.py receipt-hygiene proof-pr.json --explain --check public-git-metadata --fix-only
 python3 scripts/proof_pr.py receipt-hygiene proof-pr.json --json
 python3 scripts/proof_pr.py validate proof-pr.json
 proof-pr check-public-git-metadata --ref HEAD --ref 'refs/tags/v*'
@@ -120,7 +121,8 @@ Use `receipt-hygiene` as a read-only pre-review nudge. It inspects an existing
 receipt and suggests missing standard evidence for the risk tier, starting with
 public git metadata, secrets posture, workflow permission posture, and rollback
 specificity. Add `--explain` to include copyable commands and compact receipt
-patch examples for missing evidence. Add `--strict` when a repo wants hygiene
-warnings to fail CI.
+patch examples for missing evidence. Add `--check <id>` to focus on one finding
+and `--fix-only` to print just the remediation command/patch block. Add
+`--strict` when a repo wants hygiene warnings to fail CI.
 The reusable workflow writes these suggestions to the job summary by default in
 advisory mode.

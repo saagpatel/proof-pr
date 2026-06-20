@@ -115,6 +115,9 @@ into reusable workflow job summaries by default.
 `v0.2.7` keeps the same receipt contract and adds read-only hygiene explain
 output with copyable commands and compact receipt patch examples.
 
+`v0.2.8` keeps the same receipt contract and adds focused hygiene output for one
+check at a time with `--check` and `--fix-only`.
+
 Established public repos should start with `public_git_metadata_mode:
 introduced`, which checks only commits introduced by the workflow ref relative
 to the configured base. Full-history mode is appropriate once a repo's live

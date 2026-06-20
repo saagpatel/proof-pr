@@ -20,6 +20,7 @@ import argparse
 import json
 import shlex
 import subprocess
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -653,7 +654,7 @@ def _receipt_hygiene_findings(receipt: dict[str, Any]) -> list[dict[str, Any]]:
     tier = risk.get("tier") if isinstance(risk, dict) else None
     tier_index = {"T0": 0, "T1": 1, "T2": 2, "T3": 3, "T4": 4}.get(str(tier), -1)
     changed_surfaces = _changed_surfaces(receipt)
-    findings: list[dict[str, str]] = []
+    findings: list[dict[str, Any]] = []
 
     public_metadata = _evidence_by_id(receipt, "public-git-metadata")
     if tier_index >= 3:
@@ -862,7 +863,21 @@ def _render_hygiene(
     findings: list[dict[str, Any]],
     *,
     explain: bool = False,
+    fix_only: bool = False,
 ) -> str:
+    if fix_only:
+        lines: list[str] = []
+        for finding in findings:
+            if finding.get("command"):
+                lines.append(_format_command(finding["command"]))
+            if finding.get("receipt_patch"):
+                if lines:
+                    lines.append("")
+                lines.append(json.dumps(finding["receipt_patch"], indent=2, sort_keys=True))
+            if not finding.get("command") and not finding.get("receipt_patch"):
+                lines.append(f"# {finding['check']}: {finding['suggestion']}")
+        return "\n".join(lines)
+
     tier = receipt.get("risk", {}).get("tier", "unknown")
     receipt_id = receipt.get("receipt_id", "unknown")
     lines = [
@@ -1099,6 +1114,14 @@ def cmd_collect_public_git_metadata(args: argparse.Namespace) -> int:
 def cmd_receipt_hygiene(args: argparse.Namespace) -> int:
     receipt = _load_receipt(Path(args.receipt))
     findings = _receipt_hygiene_findings(receipt)
+    if args.check:
+        findings = [finding for finding in findings if finding.get("check") == args.check]
+        if not findings:
+            print(f"receipt hygiene: no finding for check {args.check}", file=sys.stderr)
+            return 2
+    if args.fix_only and not args.explain:
+        print("--fix-only requires --explain", file=sys.stderr)
+        return 2
     if args.json:
         print(
             json.dumps(
@@ -1111,7 +1134,7 @@ def cmd_receipt_hygiene(args: argparse.Namespace) -> int:
             )
         )
     else:
-        print(_render_hygiene(receipt, findings, explain=args.explain))
+        print(_render_hygiene(receipt, findings, explain=args.explain, fix_only=args.fix_only))
     has_warning = any(finding["severity"] == "warning" for finding in findings)
     return 1 if args.strict and has_warning else 0
 
@@ -1236,6 +1259,15 @@ def build_parser() -> argparse.ArgumentParser:
         "--explain",
         action="store_true",
         help="Include copyable commands and compact receipt patch examples",
+    )
+    hygiene.add_argument(
+        "--check",
+        help="Show only one hygiene check by id, for example public-git-metadata",
+    )
+    hygiene.add_argument(
+        "--fix-only",
+        action="store_true",
+        help="With --explain, print only the remediation command and patch block",
     )
     hygiene.add_argument(
         "--strict",

@@ -115,12 +115,14 @@ Before review, run hygiene in advisory mode:
 ```bash
 proof-pr receipt-hygiene proof-pr.json
 proof-pr receipt-hygiene proof-pr.json --explain
+proof-pr receipt-hygiene proof-pr.json --explain --check public-git-metadata --fix-only
 ```
 
 `receipt-hygiene` is read-only. It suggests missing standard evidence by risk
 tier. Use `--explain` locally when an author wants copyable commands and compact
-receipt patch examples. `--strict` makes warnings fail for repos that want a
-soft gate after dogfooding.
+receipt patch examples. Use `--check <id>` with `--fix-only` when an author only
+wants the command or patch for one hygiene finding. `--strict` makes warnings
+fail for repos that want a soft gate after dogfooding.
 
 The reusable workflow runs `receipt-hygiene` by default after validation and
 writes the result to the job summary. Keep `receipt_hygiene_strict: false` while
