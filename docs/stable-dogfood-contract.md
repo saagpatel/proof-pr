@@ -11,6 +11,8 @@ The stable dogfood contract is:
 
 - receipt JSON validates with `proof-pr validate`;
 - `proof-pr render` produces a short PR block without losing full command truth;
+- committed receipts can mark `subject.head_sha_status` as `pending_commit` and
+  render PR/check summaries with an explicit final head SHA;
 - the reusable workflow validates a committed receipt;
 - the reusable workflow writes the rendered proof block to the job summary;
 - the reusable workflow uploads the receipt and optional artifacts;
@@ -101,4 +103,6 @@ The project is ready to tag `v0.2.0` when:
 - the reusable workflow interface is small enough to support without churn.
 
 Current status: `bridge-db` has passed the `v0.1.3` reusable workflow path with
-explicit caller permissions.
+explicit caller permissions. `GithubRepoAuditor` has also passed the manual
+consumer workflow path, and exposed the commit-time SHA anchoring gap now covered
+by `subject.head_sha_status`.

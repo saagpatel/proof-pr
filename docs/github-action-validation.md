@@ -46,7 +46,7 @@ The workflow:
 - checks out the caller repo;
 - installs `proof-pr` from the requested public git ref;
 - validates the receipt;
-- renders the proof block into the job summary;
+- renders the proof block into the job summary, anchored to the GitHub run SHA;
 - uploads the receipt and optional proof artifacts.
 
 Use a released tag for both the reusable workflow ref and `proof_pr_ref` when a
@@ -85,7 +85,7 @@ jobs:
       # - name: Check finalized decision
       #   run: python3 scripts/proof_pr.py finalize proof-pr.json --require-ready
       - name: Render proof summary
-        run: python3 scripts/proof_pr.py render proof-pr.json >> "$GITHUB_STEP_SUMMARY"
+        run: python3 scripts/proof_pr.py render proof-pr.json --head-sha "${GITHUB_SHA}" >> "$GITHUB_STEP_SUMMARY"
       - name: Upload proof bundle
         uses: actions/upload-artifact@v4
         with:

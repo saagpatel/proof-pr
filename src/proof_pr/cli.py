@@ -165,6 +165,7 @@ def _default_receipt(cwd: Path, *, tier: str, summary: str, agent: str, mode: st
             "base_sha": base_sha,
             "head_ref": head_ref,
             "head_sha": head_sha,
+            "head_sha_status": "exact",
         },
         "producer": {
             "tool": "proof-pr",
@@ -480,19 +481,26 @@ def _status_line(item: dict[str, Any], *, full_commands: bool = False) -> str:
     return f"- {label}: `{status}` ({summary})"
 
 
-def render_markdown(receipt: dict[str, Any], *, full_commands: bool = False) -> str:
+def render_markdown(
+    receipt: dict[str, Any],
+    *,
+    full_commands: bool = False,
+    head_sha_override: str | None = None,
+) -> str:
     subject = receipt["subject"]
     risk = receipt["risk"]
     overall = receipt["overall"]
     security = receipt["security"]
     rollback = receipt["rollback"]
     head_sha = subject["head_sha"]
+    head_sha_status = subject.get("head_sha_status", "exact")
+    rendered_head_sha = head_sha_override or head_sha
     lines = [
         "<!-- proof-pr:v1 start -->",
         "## Proof Bundle",
         "",
         f"Risk: `{risk['tier']}`",
-        f"Receipt: `proof-pr.v1` for `{head_sha}`",
+        f"Receipt: `proof-pr.v1` for `{rendered_head_sha}`",
         f"Decision: `{overall['review_decision']}`",
         "",
         "Evidence:",
@@ -516,6 +524,23 @@ def render_markdown(receipt: dict[str, Any], *, full_commands: bool = False) -> 
         lines.extend(f"- {gap}" for gap in gaps)
     else:
         lines.append("- None")
+    if head_sha_override and head_sha_override != head_sha:
+        lines.extend(
+            [
+                "",
+                "Anchoring:",
+                f"- Receipt JSON head: `{head_sha}` (`{head_sha_status}`)",
+                f"- Rendered PR/check anchor: `{head_sha_override}`",
+            ]
+        )
+    elif head_sha_status != "exact":
+        lines.extend(
+            [
+                "",
+                "Anchoring:",
+                f"- Receipt JSON head: `{head_sha}` (`{head_sha_status}`)",
+            ]
+        )
     lines.append("<!-- proof-pr:v1 end -->")
     return "\n".join(lines)
 
@@ -609,7 +634,13 @@ def cmd_run_config(args: argparse.Namespace) -> int:
 
 def cmd_render(args: argparse.Namespace) -> int:
     receipt = _load_receipt(Path(args.receipt))
-    print(render_markdown(receipt, full_commands=args.full_commands))
+    print(
+        render_markdown(
+            receipt,
+            full_commands=args.full_commands,
+            head_sha_override=args.head_sha,
+        )
+    )
     return 0
 
 
@@ -702,6 +733,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--full-commands",
         action="store_true",
         help="Render complete command lines instead of compacting long commands",
+    )
+    render.add_argument(
+        "--head-sha",
+        help="Render the PR block against a final head SHA without mutating the receipt",
     )
     render.set_defaults(func=cmd_render)
 
