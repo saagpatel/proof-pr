@@ -30,10 +30,13 @@ on:
 
 jobs:
   proof:
-    uses: saagpatel/proof-pr/.github/workflows/proof-pr-receipt.yml@v0.1.2
+    permissions:
+      contents: read
+      actions: read
+    uses: saagpatel/proof-pr/.github/workflows/proof-pr-receipt.yml@v0.1.3
     with:
       receipt_path: proof-pr.json
-      proof_pr_ref: v0.1.2
+      proof_pr_ref: v0.1.3
       artifact_name: proof-pr
       artifact_glob: proof-pr-artifacts/**
 ```
@@ -49,6 +52,10 @@ The workflow:
 Use a released tag for both the reusable workflow ref and `proof_pr_ref` when a
 consumer repo wants stable behavior. Keep required-check enforcement disabled
 until dogfooding proves the receipt is reliable enough to gate merges.
+
+Caller workflows should grant explicit read permissions to the reusable workflow
+job. Without the `contents: read` and `actions: read` stanza, GitHub can fail a
+new caller workflow before any job logs are produced.
 
 ## Inline Workflow
 
