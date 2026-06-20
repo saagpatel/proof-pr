@@ -52,6 +52,7 @@ EVIDENCE_KINDS = {
 DRAFT_LIMITATION = "Draft receipt; evidence has not been fully collected."
 NON_GREEN_REQUIRED = {"failed", "blocked", "skipped", "stale", "partial", "not_applicable"}
 NON_GREEN_SECURITY = {"failed", "blocked", "skipped", "stale", "partial"}
+MAX_RENDERED_COMMAND_CHARS = 96
 
 
 def _run(args: list[str], *, cwd: Path) -> str | None:
@@ -88,6 +89,14 @@ def _run_with_log(args: list[str], *, cwd: Path, log_path: Path) -> tuple[str, i
 
 def _format_command(command: list[str]) -> str:
     return shlex.join(str(part) for part in command)
+
+
+def _render_command(command: list[str], *, full_commands: bool = False) -> str:
+    formatted = _format_command(command)
+    if full_commands or len(formatted) <= MAX_RENDERED_COMMAND_CHARS:
+        return formatted
+    command_name = str(command[0]) if command else "command"
+    return f"{command_name} ... ({len(command)} args; full command in receipt)"
 
 
 def _git(cwd: Path, *args: str) -> str | None:
@@ -459,17 +468,18 @@ def _run_evidence(
     )
 
 
-def _status_line(item: dict[str, Any]) -> str:
+def _status_line(item: dict[str, Any], *, full_commands: bool = False) -> str:
     status = item.get("status", "unknown")
     summary = item.get("summary", "")
     command = item.get("command")
     label = item.get("id", item.get("kind", "evidence"))
     if command:
-        return f"- {label}: `{_format_command(command)}` -> `{status}` ({summary})"
+        rendered_command = _render_command(command, full_commands=full_commands)
+        return f"- {label}: `{rendered_command}` -> `{status}` ({summary})"
     return f"- {label}: `{status}` ({summary})"
 
 
-def render_markdown(receipt: dict[str, Any]) -> str:
+def render_markdown(receipt: dict[str, Any], *, full_commands: bool = False) -> str:
     subject = receipt["subject"]
     risk = receipt["risk"]
     overall = receipt["overall"]
@@ -486,7 +496,10 @@ def render_markdown(receipt: dict[str, Any]) -> str:
         "",
         "Evidence:",
     ]
-    lines.extend(_status_line(item) for item in receipt.get("evidence", []))
+    lines.extend(
+        _status_line(item, full_commands=full_commands)
+        for item in receipt.get("evidence", [])
+    )
     lines.extend(
         [
             _status_line({"id": "secrets", **security["secrets_scan"]}),
@@ -595,7 +608,7 @@ def cmd_run_config(args: argparse.Namespace) -> int:
 
 def cmd_render(args: argparse.Namespace) -> int:
     receipt = _load_receipt(Path(args.receipt))
-    print(render_markdown(receipt))
+    print(render_markdown(receipt, full_commands=args.full_commands))
     return 0
 
 
@@ -684,6 +697,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     render = subparsers.add_parser("render", help="Render the Markdown PR block")
     render.add_argument("receipt")
+    render.add_argument(
+        "--full-commands",
+        action="store_true",
+        help="Render complete command lines instead of compacting long commands",
+    )
     render.set_defaults(func=cmd_render)
 
     validate = subparsers.add_parser("validate", help="Validate proof-pr receipts")

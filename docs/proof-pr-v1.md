@@ -110,6 +110,8 @@ Rules:
 - Link the receipt or artifact bundle when available.
 - Use the exact status vocabulary; do not hide skipped proof.
 - Anchor the block to the receipt head SHA.
+- Long commands may be compacted in the PR body, but the receipt JSON must keep
+  the complete command array.
 
 ## CLI MVP
 
@@ -141,6 +143,8 @@ Rules:
 `proof-pr render`
 
 - Render the Markdown PR block from `proof-pr.json`.
+- Compact long command lines by default so the block stays reviewable.
+- Use `--full-commands` to render complete commands inline.
 - Optionally print only, update clipboard, or patch a PR body in a later version.
 
 `proof-pr validate`
