@@ -121,6 +121,10 @@ check at a time with `--check` and `--fix-only`.
 `v0.2.9` keeps the same receipt contract and appends a focused public git
 metadata fix block to reusable workflow job summaries when that finding exists.
 
+`v0.2.10` keeps the same receipt contract and makes focused `--fix-only` checks
+with no finding print a clean no-action-needed message to stdout and exit
+successfully.
+
 Established public repos should start with `public_git_metadata_mode:
 introduced`, which checks only commits introduced by the workflow ref relative
 to the configured base. Full-history mode is appropriate once a repo's live

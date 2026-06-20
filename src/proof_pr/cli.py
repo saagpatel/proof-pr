@@ -1117,6 +1117,9 @@ def cmd_receipt_hygiene(args: argparse.Namespace) -> int:
     if args.check:
         findings = [finding for finding in findings if finding.get("check") == args.check]
         if not findings:
+            if args.fix_only:
+                print(f"No focused fix suggested for check {args.check}.")
+                return 0
             print(f"receipt hygiene: no finding for check {args.check}", file=sys.stderr)
             return 2
     if args.fix_only and not args.explain:
