@@ -33,6 +33,7 @@ teams later, but v0 optimizes for fast human review of agent-created changes.
 python3 scripts/validate_receipts.py examples/pr-*.json
 python3 scripts/proof_pr.py validate examples/pr-*.json
 python3 scripts/proof_pr.py render examples/pr-024-sample-dashboard-rollups.json
+python3 scripts/check_public_git_metadata.py --ref HEAD --ref 'refs/tags/v*'
 ```
 
 The validator is intentionally lightweight. It checks structure, required
