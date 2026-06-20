@@ -30,8 +30,8 @@ teams later, but v0 optimizes for fast human review of agent-created changes.
 ## Validate
 
 ```bash
-python3 scripts/validate_receipts.py examples/*.json
-python3 scripts/proof_pr.py validate examples/*.json
+python3 scripts/validate_receipts.py examples/pr-*.json
+python3 scripts/proof_pr.py validate examples/pr-*.json
 python3 scripts/proof_pr.py render examples/pr-024-sample-dashboard-rollups.json
 ```
 
@@ -64,6 +64,7 @@ python3 scripts/proof_pr.py run --receipt proof-pr.json --cwd /path/to/repo --id
 python3 scripts/proof_pr.py run-config proof-pr.json --cwd /path/to/repo --config examples/proof-pr.config.example.json --finalize
 python3 scripts/proof_pr.py finalize proof-pr.json --require-ready
 python3 scripts/proof_pr.py render proof-pr.json
+python3 scripts/proof_pr.py render proof-pr.json --head-sha <pr-head-sha>
 python3 scripts/proof_pr.py render --full-commands proof-pr.json
 python3 scripts/proof_pr.py validate proof-pr.json
 ```
@@ -76,6 +77,11 @@ upload artifacts, or enforce merges yet.
 By default, `render` compacts long command lines so PR bodies stay scannable.
 Use `--full-commands` when a reviewer wants complete commands inline; receipt
 JSON always keeps the full command array.
+
+Use `--head-sha` when rendering a PR body or CI summary for a committed receipt
+whose `subject.head_sha_status` is `pending_commit`. The JSON can remain honest
+about its commit-time placeholder while the rendered block anchors to the final
+PR or check-run SHA.
 
 `finalize` is intentionally conservative: failed required proof rejects the
 receipt, blocked required proof keeps it in revise, skipped/stale/partial

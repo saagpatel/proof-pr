@@ -26,6 +26,7 @@ STATUSES = {
 TIERS = {"T0", "T1", "T2", "T3", "T4"}
 AGENTS = {"codex", "claude-code", "manual", "github-actions", "unknown"}
 MODES = {"local", "ci", "manual"}
+HEAD_SHA_STATUSES = {"exact", "pending_commit", "external_anchor"}
 ROLLBACK_STATUSES = {"documented", "tested", "partial", "blocked", "not_applicable"}
 OVERALL_DECISIONS = {"ready", "ready_with_operator_awareness", "revise", "reject"}
 REQUIRED_TOP_LEVEL = {
@@ -95,6 +96,11 @@ def validate_receipt(path: Path) -> list[str]:
         for key in ("repo", "base_ref", "base_sha", "head_ref", "head_sha"):
             if not isinstance(subject.get(key), str) or not subject[key]:
                 errors.append(f"subject.{key} must be a non-empty string")
+        head_sha_status = subject.get("head_sha_status", "exact")
+        if head_sha_status not in HEAD_SHA_STATUSES:
+            errors.append(f"subject.head_sha_status has invalid value: {head_sha_status}")
+        if head_sha_status == "exact" and subject.get("head_sha") == "pending-pr-head":
+            errors.append("subject.head_sha cannot be pending-pr-head when head_sha_status is exact")
         pr_number = subject.get("pr_number")
         if pr_number is not None and (not isinstance(pr_number, int) or pr_number < 1):
             errors.append("subject.pr_number must be a positive integer or null")
