@@ -11,6 +11,7 @@ Commands:
 - finalize: update the overall status and review decision from collected proof.
 - render: print the Markdown PR proof block for a receipt.
 - validate: validate receipts using the local validator.
+- examples: list copyable receipt patterns.
 - check-public-git-metadata: fail when public git metadata leaks non-noreply emails.
 """
 
@@ -71,6 +72,53 @@ WORKFLOW_SURFACES = {
     "agent access",
 }
 DEFAULT_ROLLBACK_PATH = "Revert the PR unless a more specific rollback path is added."
+EXAMPLE_PATTERNS: list[dict[str, str]] = [
+    {
+        "pattern": "Docs/license only",
+        "example": "examples/pr-054-bridge-db-license.json",
+        "tier": "T0",
+        "copy_when": (
+            "A PR changes repository metadata, prose, comments, or static text "
+            "with no executable behavior."
+        ),
+    },
+    {
+        "pattern": "Test-only maintenance",
+        "example": "examples/pr-022-proof-pr-test-harness.json",
+        "tier": "T1",
+        "copy_when": (
+            "A PR adds or changes test coverage, validation scripts, or CI test "
+            "steps without changing runtime behavior."
+        ),
+    },
+    {
+        "pattern": "UI/API/schema consumer",
+        "example": "examples/pr-024-sample-dashboard-rollups.json",
+        "tier": "T2",
+        "copy_when": (
+            "A PR changes user-visible behavior, typed contracts, IPC/API "
+            "consumption, or dashboard truth surfaces."
+        ),
+    },
+    {
+        "pattern": "Workflow dogfood",
+        "example": "examples/pr-087-github-repo-auditor-dogfood.json",
+        "tier": "T3",
+        "copy_when": (
+            "A PR adds proof-pr adoption, GitHub Actions wiring, committed "
+            "receipts, or public proof evidence."
+        ),
+    },
+    {
+        "pattern": "Schema/concurrency/contract",
+        "example": "examples/pr-055-bridge-db-schema-concurrency.json",
+        "tier": "T3",
+        "copy_when": (
+            "A PR changes persistence, migrations, health checks, contracts, "
+            "or concurrent write behavior."
+        ),
+    },
+]
 
 
 def _run(args: list[str], *, cwd: Path) -> str | None:
@@ -1167,6 +1215,21 @@ def cmd_validate(args: argparse.Namespace) -> int:
     return 1 if failed else 0
 
 
+def cmd_examples(args: argparse.Namespace) -> int:
+    if args.json:
+        print(json.dumps({"examples": EXAMPLE_PATTERNS}, indent=2))
+        return 0
+
+    print("proof-pr example receipt patterns")
+    for item in EXAMPLE_PATTERNS:
+        print(
+            "- "
+            f"{item['pattern']} ({item['tier']}): "
+            f"{item['example']} - {item['copy_when']}"
+        )
+    return 0
+
+
 def cmd_finalize(args: argparse.Namespace) -> int:
     path = Path(args.receipt)
     receipt = _load_receipt(path)
@@ -1302,6 +1365,10 @@ def build_parser() -> argparse.ArgumentParser:
     validate = subparsers.add_parser("validate", help="Validate proof-pr receipts")
     validate.add_argument("receipts", nargs="+")
     validate.set_defaults(func=cmd_validate)
+
+    examples = subparsers.add_parser("examples", help="List copyable receipt patterns")
+    examples.add_argument("--json", action="store_true")
+    examples.set_defaults(func=cmd_examples)
 
     public_git_metadata.add_parser(subparsers)
 

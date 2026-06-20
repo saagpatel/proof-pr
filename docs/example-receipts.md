@@ -37,6 +37,7 @@ required evidence only for claims the PR actually makes.
 Validate examples before copying from them:
 
 ```bash
+python3 scripts/proof_pr.py examples
 python3 scripts/proof_pr.py validate examples/pr-*.json
 python3 scripts/proof_pr.py receipt-hygiene examples/pr-022-proof-pr-test-harness.json --explain
 python3 scripts/proof_pr.py render examples/pr-022-proof-pr-test-harness.json

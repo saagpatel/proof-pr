@@ -22,6 +22,8 @@ jobs:
         run: proof-pr check-public-git-metadata --ref "$PUBLIC_METADATA_REF" --ref 'refs/tags/v*'
       - name: Test receipt hygiene CLI behavior
         run: python3 scripts/test_receipt_hygiene_cli.py --proof-pr proof-pr
+      - name: Test examples CLI behavior
+        run: python3 scripts/test_examples_cli.py --proof-pr proof-pr
       - name: Validate example receipts
         run: proof-pr validate examples/pr-*.json
       - name: Render sample proof summary

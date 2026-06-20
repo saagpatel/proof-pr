@@ -125,6 +125,9 @@ metadata fix block to reusable workflow job summaries when that finding exists.
 with no finding print a clean no-action-needed message to stdout and exit
 successfully.
 
+`v0.2.11` keeps the same receipt contract and adds `proof-pr examples` to list
+copyable receipt patterns from the CLI.
+
 Established public repos should start with `public_git_metadata_mode:
 introduced`, which checks only commits introduced by the workflow ref relative
 to the configured base. Full-history mode is appropriate once a repo's live
