@@ -38,10 +38,10 @@ jobs:
     permissions:
       contents: read
       actions: read
-    uses: saagpatel/proof-pr/.github/workflows/proof-pr-receipt.yml@v0.2.4
+    uses: saagpatel/proof-pr/.github/workflows/proof-pr-receipt.yml@v0.2.5
     with:
       receipt_path: proof-pr.json
-      proof_pr_ref: v0.2.4
+      proof_pr_ref: v0.2.5
       artifact_name: proof-pr
       artifact_glob: proof-pr-artifacts/**
       check_public_git_metadata: false
@@ -91,7 +91,7 @@ on:
 | Soft required check | Make the workflow a required check, but allow receipts with `ready_with_operator_awareness` when limitations are explicit. | Repos with repeated successful dogfood runs. |
 | Strict gate | Require a finalized ready receipt and fail on skipped/stale/partial required evidence. | Deferred until the format has broader use. |
 
-`v0.2.4` should ship advisory mode as the documented default. Soft required
+`v0.2.5` should ship advisory mode as the documented default. Soft required
 checks can be documented as an opt-in pattern, not as the baseline.
 
 `v0.2.1` keeps the `v0.2.0` receipt contract and adds the public git metadata
@@ -105,6 +105,9 @@ visible in CLI output and reusable workflow job summaries.
 
 `v0.2.4` keeps the same receipt contract and adds first-class collection of the
 metadata-check result into normal receipt evidence.
+
+`v0.2.5` keeps the same receipt contract and adds read-only receipt hygiene
+suggestions for common missing evidence.
 
 Established public repos should start with `public_git_metadata_mode:
 introduced`, which checks only commits introduced by the workflow ref relative

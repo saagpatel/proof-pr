@@ -72,6 +72,8 @@ python3 scripts/proof_pr.py finalize proof-pr.json --require-ready
 python3 scripts/proof_pr.py render proof-pr.json
 python3 scripts/proof_pr.py render proof-pr.json --head-sha <pr-head-sha>
 python3 scripts/proof_pr.py render --full-commands proof-pr.json
+python3 scripts/proof_pr.py receipt-hygiene proof-pr.json
+python3 scripts/proof_pr.py receipt-hygiene proof-pr.json --json
 python3 scripts/proof_pr.py validate proof-pr.json
 proof-pr check-public-git-metadata --ref HEAD --ref 'refs/tags/v*'
 proof-pr check-public-git-metadata --base-ref origin/main --ref HEAD
@@ -112,3 +114,8 @@ Use `collect-public-git-metadata` when a receipt should carry that result as a
 normal `security` evidence item. The command upserts `public-git-metadata`
 without changing the receipt schema, so public metadata posture remains review
 evidence rather than supply-chain provenance.
+
+Use `receipt-hygiene` as a read-only pre-review nudge. It inspects an existing
+receipt and suggests missing standard evidence for the risk tier, starting with
+public git metadata, secrets posture, workflow permission posture, and rollback
+specificity. Add `--strict` when a repo wants hygiene warnings to fail CI.

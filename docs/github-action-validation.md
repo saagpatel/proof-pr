@@ -35,10 +35,10 @@ jobs:
     permissions:
       contents: read
       actions: read
-    uses: saagpatel/proof-pr/.github/workflows/proof-pr-receipt.yml@v0.2.4
+    uses: saagpatel/proof-pr/.github/workflows/proof-pr-receipt.yml@v0.2.5
     with:
       receipt_path: proof-pr.json
-      proof_pr_ref: v0.2.4
+      proof_pr_ref: v0.2.5
       artifact_name: proof-pr
       artifact_glob: proof-pr-artifacts/**
       check_public_git_metadata: false
@@ -104,6 +104,16 @@ top-level receipt field:
   "summary": "Public git metadata checked in introduced mode for origin/main..HEAD; legacy history and tags were not in scope; findings=0."
 }
 ```
+
+Before review, run hygiene in advisory mode:
+
+```bash
+proof-pr receipt-hygiene proof-pr.json
+```
+
+`receipt-hygiene` is read-only. It suggests missing standard evidence by risk
+tier; `--strict` makes warnings fail for repos that want a soft gate after
+dogfooding.
 
 Caller workflows should grant explicit read permissions to the reusable workflow
 job. Without the `contents: read` and `actions: read` stanza, GitHub can fail a
