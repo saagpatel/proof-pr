@@ -14,7 +14,43 @@ dogfooding.
    receipt is ready to act as a soft gate.
 6. Leave PR body updates and required-check enforcement disabled for v0.
 
-## Example Workflow
+## Reusable Workflow
+
+`proof-pr` now ships a reusable workflow at
+`.github/workflows/proof-pr-receipt.yml`.
+
+Consumer repos can call it after generating or committing a receipt:
+
+```yaml
+name: proof-pr
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  proof:
+    uses: saagpatel/proof-pr/.github/workflows/proof-pr-receipt.yml@main
+    with:
+      receipt_path: proof-pr.json
+      proof_pr_ref: main
+      artifact_name: proof-pr
+      artifact_glob: proof-pr-artifacts/**
+```
+
+The workflow:
+
+- checks out the caller repo;
+- installs `proof-pr` from the requested public git ref;
+- validates the receipt;
+- renders the proof block into the job summary;
+- uploads the receipt and optional proof artifacts.
+
+Use a released tag for `proof_pr_ref` once the reusable workflow itself is in a
+tagged release. Keep required-check enforcement disabled until dogfooding proves
+the receipt is reliable enough to gate merges.
+
+## Inline Workflow
 
 ```yaml
 name: proof-pr
