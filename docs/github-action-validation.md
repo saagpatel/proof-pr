@@ -30,10 +30,10 @@ on:
 
 jobs:
   proof:
-    uses: saagpatel/proof-pr/.github/workflows/proof-pr-receipt.yml@main
+    uses: saagpatel/proof-pr/.github/workflows/proof-pr-receipt.yml@v0.1.2
     with:
       receipt_path: proof-pr.json
-      proof_pr_ref: main
+      proof_pr_ref: v0.1.2
       artifact_name: proof-pr
       artifact_glob: proof-pr-artifacts/**
 ```
@@ -46,9 +46,9 @@ The workflow:
 - renders the proof block into the job summary;
 - uploads the receipt and optional proof artifacts.
 
-Use a released tag for `proof_pr_ref` once the reusable workflow itself is in a
-tagged release. Keep required-check enforcement disabled until dogfooding proves
-the receipt is reliable enough to gate merges.
+Use a released tag for both the reusable workflow ref and `proof_pr_ref` when a
+consumer repo wants stable behavior. Keep required-check enforcement disabled
+until dogfooding proves the receipt is reliable enough to gate merges.
 
 ## Inline Workflow
 
