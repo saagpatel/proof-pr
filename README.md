@@ -12,6 +12,8 @@ teams later, but v0 optimizes for fast human review of agent-created changes.
 
 - `docs/proof-pr-v1.md` - v0 standard, Markdown block, risk tiers, CLI plan, and
   GitHub Action follow-up.
+- `docs/example-receipts.md` - example receipt patterns by risk tier and PR
+  shape.
 - `docs/release-checklist.md` - release preflight and verification checklist.
 - `PUBLICATION.md` - public safety posture and publication checks.
 - `schemas/proof-pr.v1.schema.json` - machine-readable receipt schema.
