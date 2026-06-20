@@ -33,10 +33,10 @@ jobs:
     permissions:
       contents: read
       actions: read
-    uses: saagpatel/proof-pr/.github/workflows/proof-pr-receipt.yml@v0.1.3
+    uses: saagpatel/proof-pr/.github/workflows/proof-pr-receipt.yml@v0.2.0
     with:
       receipt_path: proof-pr.json
-      proof_pr_ref: v0.1.3
+      proof_pr_ref: v0.2.0
       artifact_name: proof-pr
       artifact_glob: proof-pr-artifacts/**
 ```
