@@ -60,6 +60,7 @@ python3 scripts/proof_pr.py run --receipt proof-pr.json --cwd /path/to/repo --id
 python3 scripts/proof_pr.py run-config proof-pr.json --cwd /path/to/repo --config examples/proof-pr.config.example.json --finalize
 python3 scripts/proof_pr.py finalize proof-pr.json --require-ready
 python3 scripts/proof_pr.py render proof-pr.json
+python3 scripts/proof_pr.py render --full-commands proof-pr.json
 python3 scripts/proof_pr.py validate proof-pr.json
 ```
 
@@ -67,6 +68,10 @@ The CLI is local-only in v0. It can draft receipt identity and diff stats, run
 configured commands into log artifacts, synthesize the final review decision,
 render the Markdown block, and validate examples. It does not update PR bodies,
 upload artifacts, or enforce merges yet.
+
+By default, `render` compacts long command lines so PR bodies stay scannable.
+Use `--full-commands` when a reviewer wants complete commands inline; receipt
+JSON always keeps the full command array.
 
 `finalize` is intentionally conservative: failed required proof rejects the
 receipt, blocked required proof keeps it in revise, skipped/stale/partial
