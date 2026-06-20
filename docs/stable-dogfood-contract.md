@@ -128,6 +128,11 @@ successfully.
 `v0.2.11` keeps the same receipt contract and adds `proof-pr examples` to list
 copyable receipt patterns from the CLI.
 
+`v0.2.12` keeps the receipt contract backward-compatible and lets `init` /
+`collect` attach optional `producer.example_pattern` metadata. `render` displays
+that pattern as authoring guidance so proof authors can start from
+`proof-pr examples --json` without turning the copied pattern into evidence.
+
 Established public repos should start with `public_git_metadata_mode:
 introduced`, which checks only commits introduced by the workflow ref relative
 to the configured base. Full-history mode is appropriate once a repo's live

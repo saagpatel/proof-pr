@@ -32,12 +32,27 @@ required evidence only for claims the PR actually makes.
   write paths. Include focused tests, health checks, and an explicit rollback or
   migration mitigation.
 
+`proof-pr init` now stores the selected pattern in
+`producer.example_pattern`. Omit `--example` to use the tier-based suggestion, or
+pass an exact pattern name or example path:
+
+```bash
+python3 scripts/proof_pr.py examples --json --tier T3
+python3 scripts/proof_pr.py init --tier T3 --example "Workflow dogfood" --summary "Adopt proof-pr" --output proof-pr.json
+python3 scripts/proof_pr.py collect proof-pr.json --config proof-pr.config.json --suggest-example
+```
+
+`proof-pr render` shows the selected pattern in the Markdown block as authoring
+guidance. It is not evidence; the receipt still needs concrete checks,
+artifacts, and bounded skipped/not-applicable reasons.
+
 ## Validation
 
 Validate examples before copying from them:
 
 ```bash
 python3 scripts/proof_pr.py examples
+python3 scripts/proof_pr.py examples --json --tier T3
 python3 scripts/proof_pr.py validate examples/pr-*.json
 python3 scripts/proof_pr.py receipt-hygiene examples/pr-022-proof-pr-test-harness.json --explain
 python3 scripts/proof_pr.py render examples/pr-022-proof-pr-test-harness.json

@@ -75,6 +75,22 @@ def main(argv: list[str] | None = None) -> int:
     if examples[0].get("pattern") != "Docs/license only":
         _fail("examples json output changed ordering unexpectedly", json_result)
     print("examples json output: passed")
+
+    tier_result = _run(proof_pr, "examples", "--json", "--tier", "T3")
+    if tier_result.returncode != 0:
+        _fail("examples tier json output returned non-zero", tier_result)
+    if tier_result.stderr:
+        _fail("examples tier json output wrote to stderr", tier_result)
+    try:
+        tier_payload = json.loads(tier_result.stdout)
+    except json.JSONDecodeError:
+        _fail("examples tier json output was not valid JSON", tier_result)
+    tier_examples = tier_payload.get("examples")
+    if not isinstance(tier_examples, list) or len(tier_examples) != 2:
+        _fail("examples tier json output did not contain two T3 examples", tier_result)
+    if {item.get("tier") for item in tier_examples} != {"T3"}:
+        _fail("examples tier json output included a non-T3 example", tier_result)
+    print("examples tier json output: passed")
     return 0
 
 

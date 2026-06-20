@@ -29,6 +29,7 @@ MODES = {"local", "ci", "manual"}
 HEAD_SHA_STATUSES = {"exact", "pending_commit", "external_anchor"}
 ROLLBACK_STATUSES = {"documented", "tested", "partial", "blocked", "not_applicable"}
 OVERALL_DECISIONS = {"ready", "ready_with_operator_awareness", "revise", "reject"}
+EXAMPLE_PATTERN_SOURCES = {"suggested", "explicit"}
 REQUIRED_TOP_LEVEL = {
     "schema_version",
     "receipt_id",
@@ -112,6 +113,28 @@ def validate_receipt(path: Path) -> list[str]:
             errors.append(f"producer.agent has invalid value: {producer.get('agent')}")
         if producer.get("mode") not in MODES:
             errors.append(f"producer.mode has invalid value: {producer.get('mode')}")
+        example_pattern = producer.get("example_pattern")
+        if example_pattern is not None:
+            _missing(
+                "producer.example_pattern",
+                example_pattern,
+                {"pattern", "example", "tier", "source"},
+                errors,
+            )
+            if isinstance(example_pattern, dict):
+                for key in ("pattern", "example"):
+                    if not isinstance(example_pattern.get(key), str) or not example_pattern[key]:
+                        errors.append(f"producer.example_pattern.{key} must be a non-empty string")
+                if example_pattern.get("tier") not in TIERS:
+                    errors.append(
+                        "producer.example_pattern.tier has invalid value: "
+                        f"{example_pattern.get('tier')}"
+                    )
+                if example_pattern.get("source") not in EXAMPLE_PATTERN_SOURCES:
+                    errors.append(
+                        "producer.example_pattern.source has invalid value: "
+                        f"{example_pattern.get('source')}"
+                    )
 
     risk = receipt.get("risk")
     _missing("risk", risk, REQUIRED_RISK, errors)

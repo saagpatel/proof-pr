@@ -50,7 +50,18 @@
         "agent": {
           "enum": ["codex", "claude-code", "manual", "github-actions", "unknown"]
         },
-        "mode": { "enum": ["local", "ci", "manual"] }
+        "mode": { "enum": ["local", "ci", "manual"] },
+        "example_pattern": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["pattern", "example", "tier", "source"],
+          "properties": {
+            "pattern": { "type": "string", "minLength": 1 },
+            "example": { "type": "string", "minLength": 1 },
+            "tier": { "enum": ["T0", "T1", "T2", "T3", "T4"] },
+            "source": { "enum": ["suggested", "explicit"] }
+          }
+        }
       }
     },
     "risk": {

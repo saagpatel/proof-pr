@@ -67,7 +67,8 @@ python3 -m pip install git+https://github.com/saagpatel/proof-pr.git
 
 ```bash
 python3 scripts/proof_pr.py init --cwd /path/to/repo --tier T2 --summary "Short PR summary" --output proof-pr.json
-python3 scripts/proof_pr.py collect proof-pr.json --cwd /path/to/repo --config examples/proof-pr.config.example.json
+python3 scripts/proof_pr.py init --cwd /path/to/repo --tier T3 --example "Workflow dogfood" --summary "Short PR summary" --output proof-pr.json
+python3 scripts/proof_pr.py collect proof-pr.json --cwd /path/to/repo --config examples/proof-pr.config.example.json --suggest-example
 python3 scripts/proof_pr.py run --receipt proof-pr.json --cwd /path/to/repo --id tests --kind test -- python3 -m pytest -q
 python3 scripts/proof_pr.py run-config proof-pr.json --cwd /path/to/repo --config examples/proof-pr.config.example.json --finalize
 python3 scripts/proof_pr.py finalize proof-pr.json --require-ready
@@ -80,7 +81,9 @@ python3 scripts/proof_pr.py receipt-hygiene proof-pr.json --explain --check publ
 python3 scripts/proof_pr.py receipt-hygiene proof-pr.json --json
 python3 scripts/proof_pr.py examples
 python3 scripts/proof_pr.py examples --json
+python3 scripts/proof_pr.py examples --json --tier T3
 python3 scripts/test_receipt_hygiene_cli.py
+python3 scripts/test_example_pattern_cli.py
 python3 scripts/proof_pr.py validate proof-pr.json
 proof-pr check-public-git-metadata --ref HEAD --ref 'refs/tags/v*'
 proof-pr check-public-git-metadata --base-ref origin/main --ref HEAD
@@ -101,6 +104,12 @@ Use `--head-sha` when rendering a PR body or CI summary for a committed receipt
 whose `subject.head_sha_status` is `pending_commit`. The JSON can remain honest
 about its commit-time placeholder while the rendered block anchors to the final
 PR or check-run SHA.
+
+`init` attaches a suggested `producer.example_pattern` from the receipt tier, or
+an explicit one from `--example`. `collect --suggest-example` refreshes that
+metadata after config changes the risk tier or changed surfaces. `render` shows
+the selected pattern as authoring guidance; it is not evidence and does not
+claim that the PR copied the example correctly.
 
 `finalize` is intentionally conservative: failed required proof rejects the
 receipt, blocked required proof keeps it in revise, skipped/stale/partial

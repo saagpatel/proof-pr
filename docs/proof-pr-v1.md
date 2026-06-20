@@ -151,12 +151,16 @@ and the final rendered anchor when they differ.
 - Detect repo, branch, base/head refs, base/head SHAs, and PR number if `gh` can
   resolve one.
 - Create an in-memory receipt draft.
+- Attach a suggested `producer.example_pattern` from the selected risk tier, or
+  use `--example` to attach a specific pattern from `proof-pr examples --json`.
 
 `proof-pr collect`
 
 - Gather changed files and diff stats.
 - Run configured or operator-supplied checks.
 - Attach artifact references.
+- Use `--suggest-example` to refresh `producer.example_pattern` after config
+  changes the risk tier or changed surfaces.
 - Mark missing categories as `skipped`, `blocked`, or `not_applicable` with a
   reason instead of pretending they passed.
 
@@ -175,6 +179,8 @@ and the final rendered anchor when they differ.
 
 - Render the Markdown PR block from `proof-pr.json`.
 - Compact long command lines by default so the block stays reviewable.
+- Show `producer.example_pattern` as authoring guidance when the receipt carries
+  it. This is not evidence; it only names the copyable pattern used or suggested.
 - Use `--full-commands` to render complete commands inline.
 - Use `--head-sha` to anchor the rendered block to a final PR/check SHA without
   mutating a committed receipt that used `pending_commit`.
