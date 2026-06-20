@@ -24,6 +24,8 @@ jobs:
         run: python3 scripts/test_receipt_hygiene_cli.py --proof-pr proof-pr
       - name: Test examples CLI behavior
         run: python3 scripts/test_examples_cli.py --proof-pr proof-pr
+      - name: Test example pattern authoring metadata
+        run: python3 scripts/test_example_pattern_cli.py --proof-pr proof-pr
       - name: Validate example receipts
         run: proof-pr validate examples/pr-*.json
       - name: Render sample proof summary

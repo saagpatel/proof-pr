@@ -121,6 +121,51 @@ EXAMPLE_PATTERNS: list[dict[str, str]] = [
 ]
 
 
+def _example_pattern_by_name(name: str) -> dict[str, str] | None:
+    normalized = name.strip().lower()
+    for item in EXAMPLE_PATTERNS:
+        if item["pattern"].lower() == normalized or item["example"].lower() == normalized:
+            return item
+    return None
+
+
+def _suggest_example_pattern(*, tier: str, changed_surfaces: set[str]) -> dict[str, str]:
+    if tier == "T0":
+        return EXAMPLE_PATTERNS[0]
+    if tier == "T1":
+        return EXAMPLE_PATTERNS[1]
+    if tier == "T2":
+        return EXAMPLE_PATTERNS[2]
+    if changed_surfaces & WORKFLOW_SURFACES:
+        return EXAMPLE_PATTERNS[3]
+    return EXAMPLE_PATTERNS[4]
+
+
+def _example_pattern_payload(item: dict[str, str], *, source: str) -> dict[str, str]:
+    return {
+        "pattern": item["pattern"],
+        "example": item["example"],
+        "tier": item["tier"],
+        "source": source,
+    }
+
+
+def _set_example_pattern(
+    receipt: dict[str, Any],
+    *,
+    pattern: dict[str, str] | None = None,
+    source: str = "suggested",
+) -> None:
+    risk = receipt.get("risk", {})
+    tier = str(risk.get("tier", "T1")) if isinstance(risk, dict) else "T1"
+    changed_surfaces = _changed_surfaces(receipt)
+    selected = pattern or _suggest_example_pattern(tier=tier, changed_surfaces=changed_surfaces)
+    receipt.setdefault("producer", {})["example_pattern"] = _example_pattern_payload(
+        selected,
+        source=source,
+    )
+
+
 def _run(args: list[str], *, cwd: Path) -> str | None:
     try:
         result = subprocess.run(
@@ -973,6 +1018,7 @@ def render_markdown(
     head_sha = subject["head_sha"]
     head_sha_status = subject.get("head_sha_status", "exact")
     rendered_head_sha = head_sha_override or head_sha
+    example_pattern = receipt.get("producer", {}).get("example_pattern")
     lines = [
         "<!-- proof-pr:v1 start -->",
         "## Proof Bundle",
@@ -980,9 +1026,14 @@ def render_markdown(
         f"Risk: `{risk['tier']}`",
         f"Receipt: `proof-pr.v1` for `{rendered_head_sha}`",
         f"Decision: `{overall['review_decision']}`",
-        "",
-        "Evidence:",
     ]
+    if isinstance(example_pattern, dict):
+        pattern = example_pattern.get("pattern")
+        example = example_pattern.get("example")
+        source = example_pattern.get("source", "suggested")
+        if isinstance(pattern, str) and isinstance(example, str):
+            lines.append(f"Pattern: `{pattern}` via `{example}` (`{source}`)")
+    lines.extend(["", "Evidence:"])
     lines.extend(
         _status_line(item, full_commands=full_commands)
         for item in receipt.get("evidence", [])
@@ -1025,6 +1076,12 @@ def render_markdown(
 
 def cmd_init(args: argparse.Namespace) -> int:
     cwd = Path(args.cwd).resolve()
+    pattern = None
+    if args.example:
+        pattern = _example_pattern_by_name(args.example)
+        if not pattern:
+            print(f"unknown example pattern: {args.example}", file=sys.stderr)
+            return 2
     receipt = _default_receipt(
         cwd,
         tier=args.tier,
@@ -1033,6 +1090,11 @@ def cmd_init(args: argparse.Namespace) -> int:
         mode=args.mode,
     )
     _collect_diff(cwd, receipt)
+    _set_example_pattern(
+        receipt,
+        pattern=pattern,
+        source="explicit" if pattern else "suggested",
+    )
     _write_receipt(Path(args.output), receipt)
     print(f"created {args.output}")
     return 0
@@ -1045,6 +1107,14 @@ def cmd_collect(args: argparse.Namespace) -> int:
     if args.config:
         _apply_config(receipt, _load_config(Path(args.config)))
     _collect_diff(cwd, receipt)
+    if args.example:
+        pattern = _example_pattern_by_name(args.example)
+        if not pattern:
+            print(f"unknown example pattern: {args.example}", file=sys.stderr)
+            return 2
+        _set_example_pattern(receipt, pattern=pattern, source="explicit")
+    elif args.suggest_example:
+        _set_example_pattern(receipt, source="suggested")
     _write_receipt(path, receipt)
     print(f"updated {path}")
     return 0
@@ -1216,12 +1286,15 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
 
 def cmd_examples(args: argparse.Namespace) -> int:
+    patterns = EXAMPLE_PATTERNS
+    if args.tier:
+        patterns = [item for item in patterns if item["tier"] == args.tier]
     if args.json:
-        print(json.dumps({"examples": EXAMPLE_PATTERNS}, indent=2))
+        print(json.dumps({"examples": patterns}, indent=2))
         return 0
 
     print("proof-pr example receipt patterns")
-    for item in EXAMPLE_PATTERNS:
+    for item in patterns:
         print(
             "- "
             f"{item['pattern']} ({item['tier']}): "
@@ -1264,12 +1337,28 @@ def build_parser() -> argparse.ArgumentParser:
         default="codex",
     )
     init.add_argument("--mode", choices=["local", "ci", "manual"], default="local")
+    init.add_argument(
+        "--example",
+        help=(
+            "Attach a named example pattern or example receipt path. "
+            "Defaults to a tier-based suggestion."
+        ),
+    )
     init.set_defaults(func=cmd_init)
 
     collect = subparsers.add_parser("collect", help="Update a receipt with git diff stats")
     collect.add_argument("receipt")
     collect.add_argument("--cwd", default=".")
     collect.add_argument("--config")
+    collect.add_argument(
+        "--suggest-example",
+        action="store_true",
+        help="Refresh producer.example_pattern from the receipt risk tier and changed surfaces",
+    )
+    collect.add_argument(
+        "--example",
+        help="Attach a named example pattern or example receipt path instead of auto-suggesting",
+    )
     collect.set_defaults(func=cmd_collect)
 
     run = subparsers.add_parser("run", help="Run one command and append evidence")
@@ -1368,6 +1457,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     examples = subparsers.add_parser("examples", help="List copyable receipt patterns")
     examples.add_argument("--json", action="store_true")
+    examples.add_argument("--tier", choices=["T0", "T1", "T2", "T3", "T4"])
     examples.set_defaults(func=cmd_examples)
 
     public_git_metadata.add_parser(subparsers)
