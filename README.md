@@ -21,6 +21,8 @@ teams later, but v0 optimizes for fast human review of agent-created changes.
 - `examples/proof-pr.config.example.json` - sample command config for a
   dashboard truth/schema consumer PR.
 - `docs/github-action-validation.md` - GitHub Action validation plan and example.
+- `.github/workflows/proof-pr-receipt.yml` - reusable workflow that validates a
+  receipt, uploads proof artifacts, and writes a job summary.
 - `docs/dogfood-sample-dashboard.md` - first local dogfood run notes.
 
 ## Validate
