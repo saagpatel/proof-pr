@@ -64,8 +64,16 @@ def _check_email(
         findings.append(Finding(ref, object_id, field, name, email))
 
 
-def _scan_commits(cwd: Path, ref: str, allowed: re.Pattern[str], findings: list[Finding]) -> None:
-    output = _git(cwd, "log", ref, "--format=%H%x09%an%x09%ae%x09%cn%x09%ce")
+def _scan_commits(
+    cwd: Path,
+    ref: str,
+    allowed: re.Pattern[str],
+    findings: list[Finding],
+    *,
+    base_ref: str | None = None,
+) -> None:
+    revision = f"{base_ref}..{ref}" if base_ref else ref
+    output = _git(cwd, "log", revision, "--format=%H%x09%an%x09%ae%x09%cn%x09%ce")
     for line in output.splitlines():
         if not line:
             continue
@@ -117,15 +125,23 @@ def _scan_tag(cwd: Path, ref: str, allowed: re.Pattern[str], findings: list[Find
         return
 
 
-def check_metadata(cwd: Path, refspecs: list[str], email_pattern: str) -> list[Finding]:
+def check_metadata(
+    cwd: Path,
+    refspecs: list[str],
+    email_pattern: str,
+    *,
+    base_ref: str | None = None,
+    scan_tags: bool = True,
+) -> list[Finding]:
     allowed = re.compile(email_pattern)
     findings: list[Finding] = []
     refs = _expand_refs(cwd, refspecs)
     if not refs:
         raise ValueError("no refs matched")
     for ref in refs:
-        _scan_commits(cwd, ref, allowed, findings)
-        _scan_tag(cwd, ref, allowed, findings)
+        _scan_commits(cwd, ref, allowed, findings, base_ref=base_ref)
+        if scan_tags and base_ref is None:
+            _scan_tag(cwd, ref, allowed, findings)
     return findings
 
 
@@ -135,6 +151,8 @@ def check_public_git_metadata(args: argparse.Namespace) -> int:
             Path(args.cwd).resolve(),
             args.refs or ["HEAD"],
             args.allowed_email_regex,
+            base_ref=args.base_ref,
+            scan_tags=not args.no_tags,
         )
     except (subprocess.CalledProcessError, ValueError) as exc:
         print(f"metadata check failed: {exc}", file=sys.stderr)
@@ -168,6 +186,18 @@ def add_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) 
         "--allowed-email-regex",
         default=DEFAULT_EMAIL_PATTERN,
         help="Regex for allowed public email metadata.",
+    )
+    parser.add_argument(
+        "--base-ref",
+        help=(
+            "Only inspect commits reachable from each --ref but not from this base "
+            "ref, for example origin/main. Tagger metadata is skipped in range mode."
+        ),
+    )
+    parser.add_argument(
+        "--no-tags",
+        action="store_true",
+        help="Skip annotated tagger metadata checks for selected tag refs.",
     )
     parser.set_defaults(func=check_public_git_metadata)
 

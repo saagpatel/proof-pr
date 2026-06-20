@@ -74,6 +74,7 @@ python3 scripts/proof_pr.py render proof-pr.json --head-sha <pr-head-sha>
 python3 scripts/proof_pr.py render --full-commands proof-pr.json
 python3 scripts/proof_pr.py validate proof-pr.json
 proof-pr check-public-git-metadata --ref HEAD --ref 'refs/tags/v*'
+proof-pr check-public-git-metadata --base-ref origin/main --ref HEAD
 ```
 
 The CLI is local-only in v0. It can draft receipt identity and diff stats, run
@@ -98,4 +99,6 @@ cleared during finalization after evidence has been collected.
 
 `check-public-git-metadata` is a public-release guardrail. It fails when selected
 refs contain commit or annotated-tag email metadata outside GitHub noreply
-patterns, and it is enforced by this repository's self-check workflow.
+patterns, and it is enforced by this repository's self-check workflow. Use
+`--base-ref origin/main --ref HEAD` to check only newly introduced commits in
+older repos whose existing public history is not fully noreply-clean.

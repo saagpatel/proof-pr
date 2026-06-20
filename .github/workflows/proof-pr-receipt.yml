@@ -33,6 +33,16 @@ on:
         required: false
         type: string
         default: ""
+      public_git_metadata_mode:
+        description: Use full to scan selected refs and tags, or introduced to scan only base..ref commits.
+        required: false
+        type: string
+        default: full
+      public_git_metadata_base_ref:
+        description: Base ref for introduced metadata checks. Defaults to the PR base or origin/main.
+        required: false
+        type: string
+        default: ""
   workflow_dispatch:
     inputs:
       receipt_path:
@@ -65,6 +75,16 @@ on:
         required: false
         type: string
         default: ""
+      public_git_metadata_mode:
+        description: Use full to scan selected refs and tags, or introduced to scan only base..ref commits.
+        required: false
+        type: string
+        default: full
+      public_git_metadata_base_ref:
+        description: Base ref for introduced metadata checks. Defaults to the PR base or origin/main.
+        required: false
+        type: string
+        default: ""
 
 jobs:
   validate-receipt:
@@ -84,7 +104,27 @@ jobs:
         if: ${{ inputs.check_public_git_metadata }}
         env:
           PUBLIC_METADATA_REF: ${{ inputs.public_git_metadata_ref || github.sha }}
-        run: proof-pr check-public-git-metadata --ref "$PUBLIC_METADATA_REF" --ref 'refs/tags/v*'
+          PUBLIC_METADATA_MODE: ${{ inputs.public_git_metadata_mode }}
+          PUBLIC_METADATA_BASE_REF: ${{ inputs.public_git_metadata_base_ref }}
+          PUBLIC_METADATA_DEFAULT_BRANCH: ${{ github.event.repository.default_branch || 'main' }}
+          PUBLIC_METADATA_PR_BASE: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          if [ "$PUBLIC_METADATA_MODE" = "introduced" ]; then
+            base_ref="$PUBLIC_METADATA_BASE_REF"
+            if [ -z "$base_ref" ] && [ -n "$PUBLIC_METADATA_PR_BASE" ]; then
+              base_ref="origin/$PUBLIC_METADATA_PR_BASE"
+            fi
+            if [ -z "$base_ref" ]; then
+              base_ref="origin/$PUBLIC_METADATA_DEFAULT_BRANCH"
+            fi
+            proof-pr check-public-git-metadata --base-ref "$base_ref" --ref "$PUBLIC_METADATA_REF"
+          elif [ "$PUBLIC_METADATA_MODE" = "full" ]; then
+            proof-pr check-public-git-metadata --ref "$PUBLIC_METADATA_REF" --ref 'refs/tags/v*'
+          else
+            echo "invalid public_git_metadata_mode: $PUBLIC_METADATA_MODE" >&2
+            exit 2
+          fi
 
       - name: Validate receipt
         env:

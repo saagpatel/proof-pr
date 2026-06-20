@@ -35,13 +35,16 @@ jobs:
     permissions:
       contents: read
       actions: read
-    uses: saagpatel/proof-pr/.github/workflows/proof-pr-receipt.yml@v0.2.1
+    uses: saagpatel/proof-pr/.github/workflows/proof-pr-receipt.yml@v0.2.2
     with:
       receipt_path: proof-pr.json
-      proof_pr_ref: v0.2.1
+      proof_pr_ref: v0.2.2
       artifact_name: proof-pr
       artifact_glob: proof-pr-artifacts/**
       check_public_git_metadata: false
+      # For older repos with legacy public metadata, prefer introduced mode:
+      # check_public_git_metadata: true
+      # public_git_metadata_mode: introduced
       # For pull_request callers that enable the metadata gate, prefer:
       # public_git_metadata_ref: ${{ github.event.pull_request.head.sha }}
 ```
@@ -50,7 +53,8 @@ The workflow:
 
 - checks out the caller repo;
 - installs `proof-pr` from the requested public git ref;
-- optionally checks public git metadata for the configured ref and version tags;
+- optionally checks public git metadata for the configured ref and version tags,
+  or only for commits introduced by `base..ref`;
 - validates the receipt;
 - renders the proof block into the job summary, anchored to the GitHub run SHA;
 - uploads the receipt and optional proof artifacts.
@@ -58,6 +62,11 @@ The workflow:
 Use a released tag for both the reusable workflow ref and `proof_pr_ref` when a
 consumer repo wants stable behavior. Keep required-check enforcement disabled
 until dogfooding proves the receipt is reliable enough to gate merges.
+
+Use `check_public_git_metadata: true` with `public_git_metadata_mode:
+introduced` for established public repos whose old commits or tags are not
+noreply-clean. Keep `full` mode for newly scrubbed repos and release/publication
+checks where all selected refs and tags are expected to be clean.
 
 Caller workflows should grant explicit read permissions to the reusable workflow
 job. Without the `contents: read` and `actions: read` stanza, GitHub can fail a
@@ -90,7 +99,8 @@ jobs:
       - name: Check public git metadata
         env:
           PUBLIC_METADATA_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-        run: python3 scripts/proof_pr.py check-public-git-metadata --ref "$PUBLIC_METADATA_REF" --ref 'refs/tags/v*'
+          PUBLIC_METADATA_BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'origin/main' }}
+        run: python3 scripts/proof_pr.py check-public-git-metadata --base-ref "$PUBLIC_METADATA_BASE_REF" --ref "$PUBLIC_METADATA_REF"
       - name: Validate receipt
         run: python3 scripts/proof_pr.py validate proof-pr.json
       # Enable after dogfooding if the repo wants a non-blocking ready check first:

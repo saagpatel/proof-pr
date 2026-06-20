@@ -38,13 +38,15 @@ jobs:
     permissions:
       contents: read
       actions: read
-    uses: saagpatel/proof-pr/.github/workflows/proof-pr-receipt.yml@v0.2.1
+    uses: saagpatel/proof-pr/.github/workflows/proof-pr-receipt.yml@v0.2.2
     with:
       receipt_path: proof-pr.json
-      proof_pr_ref: v0.2.1
+      proof_pr_ref: v0.2.2
       artifact_name: proof-pr
       artifact_glob: proof-pr-artifacts/**
       check_public_git_metadata: false
+      # Established repos can opt into new-commit metadata checks with:
+      # public_git_metadata_mode: introduced
 ```
 
 Start with `workflow_dispatch` when adopting the workflow in a new repo. After a
@@ -89,11 +91,19 @@ on:
 | Soft required check | Make the workflow a required check, but allow receipts with `ready_with_operator_awareness` when limitations are explicit. | Repos with repeated successful dogfood runs. |
 | Strict gate | Require a finalized ready receipt and fail on skipped/stale/partial required evidence. | Deferred until the format has broader use. |
 
-`v0.2.1` should ship advisory mode as the documented default. Soft required
+`v0.2.2` should ship advisory mode as the documented default. Soft required
 checks can be documented as an opt-in pattern, not as the baseline.
 
 `v0.2.1` keeps the `v0.2.0` receipt contract and adds the public git metadata
 gate as an opt-in reusable workflow input for consumers.
+
+`v0.2.2` keeps that contract and adds introduced-only metadata checks so older
+repos can gate new commits without rewriting legacy public history.
+
+Established public repos should start with `public_git_metadata_mode:
+introduced`, which checks only commits introduced by the workflow ref relative
+to the configured base. Full-history mode is appropriate once a repo's live
+history and version tags are known to be noreply-clean.
 
 ## Ready For v0.2.0
 
