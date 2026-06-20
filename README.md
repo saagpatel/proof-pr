@@ -76,6 +76,7 @@ python3 scripts/proof_pr.py validate proof-pr.json
 proof-pr check-public-git-metadata --ref HEAD --ref 'refs/tags/v*'
 proof-pr check-public-git-metadata --base-ref origin/main --ref HEAD
 proof-pr check-public-git-metadata --base-ref origin/main --ref HEAD --summary-format text
+proof-pr collect-public-git-metadata --receipt proof-pr.json --base-ref origin/main --ref HEAD
 ```
 
 The CLI is local-only in v0. It can draft receipt identity and diff stats, run
@@ -106,3 +107,8 @@ older repos whose existing public history is not fully noreply-clean.
 Use `--summary-format text` or `--summary-format json` when the check output is
 being copied into CI summaries or receipts; the summary records whether the
 scope was `full` or `introduced`, the checked refs, the base ref, and tag scope.
+
+Use `collect-public-git-metadata` when a receipt should carry that result as a
+normal `security` evidence item. The command upserts `public-git-metadata`
+without changing the receipt schema, so public metadata posture remains review
+evidence rather than supply-chain provenance.

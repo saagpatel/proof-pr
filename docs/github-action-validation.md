@@ -35,10 +35,10 @@ jobs:
     permissions:
       contents: read
       actions: read
-    uses: saagpatel/proof-pr/.github/workflows/proof-pr-receipt.yml@v0.2.3
+    uses: saagpatel/proof-pr/.github/workflows/proof-pr-receipt.yml@v0.2.4
     with:
       receipt_path: proof-pr.json
-      proof_pr_ref: v0.2.3
+      proof_pr_ref: v0.2.4
       artifact_name: proof-pr
       artifact_glob: proof-pr-artifacts/**
       check_public_git_metadata: false
@@ -70,8 +70,30 @@ introduced` for established public repos whose old commits or tags are not
 noreply-clean. Keep `full` mode for newly scrubbed repos and release/publication
 checks where all selected refs and tags are expected to be clean.
 
-When the metadata check is part of a receipt, represent it as a normal evidence
-item instead of a new security field:
+For committed receipts, collect the same posture as a normal evidence item:
+
+```bash
+proof-pr collect-public-git-metadata \
+  --receipt proof-pr.json \
+  --base-ref origin/main \
+  --ref HEAD
+```
+
+Or add it to `run-config`:
+
+```json
+{
+  "public_git_metadata": {
+    "id": "public-git-metadata",
+    "refs": ["HEAD"],
+    "base_ref": "origin/main",
+    "required": true
+  }
+}
+```
+
+This writes a schema-valid `security` evidence item instead of adding a new
+top-level receipt field:
 
 ```json
 {
@@ -79,7 +101,7 @@ item instead of a new security field:
   "kind": "security",
   "status": "passed",
   "required": true,
-  "summary": "Public git metadata checked in introduced mode against origin/main..HEAD; legacy history and tags were not in scope."
+  "summary": "Public git metadata checked in introduced mode for origin/main..HEAD; legacy history and tags were not in scope; findings=0."
 }
 ```
 

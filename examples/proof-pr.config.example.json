@@ -33,6 +33,12 @@
     "status": "documented",
     "path": "Revert the PR; keep producer/consumer fallback behavior documented."
   },
+  "public_git_metadata": {
+    "id": "public-git-metadata",
+    "refs": ["HEAD"],
+    "base_ref": "origin/main",
+    "required": true
+  },
   "commands": [
     {
       "id": "typecheck",

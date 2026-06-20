@@ -6,6 +6,7 @@ Commands:
 - collect: update a receipt with changed files and diff stats.
 - run: execute one verification command and append evidence.
 - run-config: execute configured verification commands.
+- collect-public-git-metadata: run the public metadata check into receipt evidence.
 - finalize: update the overall status and review decision from collected proof.
 - render: print the Markdown PR proof block for a receipt.
 - validate: validate receipts using the local validator.
@@ -472,6 +473,116 @@ def _run_evidence(
     )
 
 
+def _metadata_scope_sentence(summary: public_git_metadata.CheckSummary) -> str:
+    refs = ", ".join(summary.refs)
+    if summary.mode == "introduced":
+        scope = f"{summary.base_ref or 'base'}..{refs}"
+        tag_note = "legacy history and tags were not in scope"
+    else:
+        scope = refs
+        tag_note = f"tag scope: {summary.tag_scope}"
+    return (
+        f"Public git metadata checked in {summary.mode} mode for {scope}; "
+        f"{tag_note}; findings={summary.finding_count}."
+    )
+
+
+def _metadata_check_command(
+    *,
+    refs: list[str],
+    base_ref: str | None,
+    email_pattern: str,
+    scan_tags: bool,
+) -> list[str]:
+    command = ["proof-pr", "check-public-git-metadata"]
+    for ref in refs:
+        command.extend(["--ref", ref])
+    if base_ref:
+        command.extend(["--base-ref", base_ref])
+    if email_pattern != public_git_metadata.DEFAULT_EMAIL_PATTERN:
+        command.extend(["--allowed-email-regex", email_pattern])
+    if not scan_tags:
+        command.append("--no-tags")
+    command.extend(["--summary-format", "text"])
+    return command
+
+
+def _collect_public_git_metadata(
+    *,
+    cwd: Path,
+    receipt: dict[str, Any],
+    evidence_id: str,
+    refs: list[str],
+    base_ref: str | None,
+    email_pattern: str,
+    scan_tags: bool,
+    required: bool,
+) -> str:
+    try:
+        findings = public_git_metadata.check_metadata(
+            cwd,
+            refs,
+            email_pattern,
+            base_ref=base_ref,
+            scan_tags=scan_tags,
+        )
+    except (subprocess.CalledProcessError, ValueError) as exc:
+        status = "blocked"
+        summary = public_git_metadata.summarize_metadata_check(
+            refs=refs,
+            email_pattern=email_pattern,
+            findings=[],
+            status=status,
+            base_ref=base_ref,
+            scan_tags=scan_tags,
+        )
+        item: dict[str, Any] = {
+            "id": evidence_id,
+            "kind": "security",
+            "command": _metadata_check_command(
+                refs=refs,
+                base_ref=base_ref,
+                email_pattern=email_pattern,
+                scan_tags=scan_tags,
+            ),
+            "status": status,
+            "required": required,
+            "summary": _metadata_scope_sentence(summary),
+            "reason": f"metadata check failed: {exc}",
+        }
+        _upsert_evidence(receipt, item)
+        return status
+
+    status = "failed" if findings else "passed"
+    summary = public_git_metadata.summarize_metadata_check(
+        refs=refs,
+        email_pattern=email_pattern,
+        findings=findings,
+        status=status,
+        base_ref=base_ref,
+        scan_tags=scan_tags,
+    )
+    item = {
+        "id": evidence_id,
+        "kind": "security",
+        "command": _metadata_check_command(
+            refs=refs,
+            base_ref=base_ref,
+            email_pattern=email_pattern,
+            scan_tags=scan_tags,
+        ),
+        "status": status,
+        "required": required,
+        "summary": _metadata_scope_sentence(summary),
+    }
+    if findings:
+        item["reason"] = (
+            f"{len(findings)} public git metadata finding(s); run the command for details."
+        )
+    _upsert_evidence(receipt, item)
+    return status
+
+
 def _status_line(item: dict[str, Any], *, full_commands: bool = False) -> str:
     status = item.get("status", "unknown")
     summary = item.get("summary", "")
@@ -619,6 +730,34 @@ def cmd_run_config(args: argparse.Namespace) -> int:
             summary=command_config.get("summary", command_config["id"]),
             artifact_dir=Path(args.artifact_dir) if args.artifact_dir else None,
         )
+    metadata_config = config.get("public_git_metadata")
+    metadata_status = None
+    if isinstance(metadata_config, dict) and metadata_config.get("enabled", True):
+        refs = metadata_config.get("refs") or ["HEAD"]
+        if not isinstance(refs, list) or not all(isinstance(ref, str) for ref in refs):
+            raise ValueError("config.public_git_metadata.refs must be a list of strings")
+        base_ref = metadata_config.get("base_ref")
+        if base_ref is not None and not isinstance(base_ref, str):
+            raise ValueError("config.public_git_metadata.base_ref must be a string")
+        email_pattern = metadata_config.get(
+            "allowed_email_regex",
+            public_git_metadata.DEFAULT_EMAIL_PATTERN,
+        )
+        if not isinstance(email_pattern, str):
+            raise ValueError("config.public_git_metadata.allowed_email_regex must be a string")
+        evidence_id = metadata_config.get("id", "public-git-metadata")
+        if not isinstance(evidence_id, str) or not evidence_id:
+            raise ValueError("config.public_git_metadata.id must be a non-empty string")
+        metadata_status = _collect_public_git_metadata(
+            cwd=cwd,
+            receipt=receipt,
+            evidence_id=evidence_id,
+            refs=refs,
+            base_ref=base_ref,
+            email_pattern=email_pattern,
+            scan_tags=not bool(metadata_config.get("no_tags", False)),
+            required=bool(metadata_config.get("required", True)),
+        )
     if args.finalize:
         _finalize_receipt(
             receipt,
@@ -627,10 +766,31 @@ def cmd_run_config(args: argparse.Namespace) -> int:
         )
     _write_receipt(path, receipt)
     message = f"ran {len(commands)} configured command(s)"
+    if metadata_status:
+        message += f"; public git metadata {metadata_status}"
     if args.finalize:
         overall = receipt["overall"]
         message += f"; finalized {overall['status']} / {overall['review_decision']}"
     print(message)
+    return 0
+
+
+def cmd_collect_public_git_metadata(args: argparse.Namespace) -> int:
+    cwd = Path(args.cwd).resolve()
+    path = Path(args.receipt)
+    receipt = _load_receipt(path)
+    status = _collect_public_git_metadata(
+        cwd=cwd,
+        receipt=receipt,
+        evidence_id=args.id,
+        refs=args.refs or ["HEAD"],
+        base_ref=args.base_ref,
+        email_pattern=args.allowed_email_regex,
+        scan_tags=not args.no_tags,
+        required=args.required,
+    )
+    _write_receipt(path, receipt)
+    print(f"collected {args.id}: {status}")
     return 0
 
 
@@ -721,6 +881,28 @@ def build_parser() -> argparse.ArgumentParser:
     run_config.add_argument("--allow-limitations", action="store_true")
     run_config.add_argument("--keep-draft-limitations", action="store_true")
     run_config.set_defaults(func=cmd_run_config)
+
+    metadata = subparsers.add_parser(
+        "collect-public-git-metadata",
+        help="Run the public metadata check and upsert receipt evidence",
+    )
+    metadata.add_argument("--receipt", required=True)
+    metadata.add_argument("--cwd", default=".")
+    metadata.add_argument("--id", default="public-git-metadata")
+    metadata.add_argument(
+        "--ref",
+        action="append",
+        dest="refs",
+        help="Ref to inspect. Repeatable. Defaults to HEAD.",
+    )
+    metadata.add_argument("--base-ref")
+    metadata.add_argument(
+        "--allowed-email-regex",
+        default=public_git_metadata.DEFAULT_EMAIL_PATTERN,
+    )
+    metadata.add_argument("--no-tags", action="store_true")
+    metadata.add_argument("--required", action=argparse.BooleanOptionalAction, default=True)
+    metadata.set_defaults(func=cmd_collect_public_git_metadata)
 
     finalize = subparsers.add_parser("finalize", help="Update the overall decision")
     finalize.add_argument("receipt")

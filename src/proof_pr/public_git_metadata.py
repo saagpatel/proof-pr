@@ -179,16 +179,34 @@ def check_metadata(
     return findings
 
 
-def build_summary(args: argparse.Namespace, findings: list[Finding], status: str) -> CheckSummary:
-    base_ref = args.base_ref or None
+def summarize_metadata_check(
+    *,
+    refs: list[str],
+    email_pattern: str,
+    findings: list[Finding],
+    status: str,
+    base_ref: str | None = None,
+    scan_tags: bool = True,
+) -> CheckSummary:
     return CheckSummary(
         status=status,
         mode="introduced" if base_ref else "full",
-        refs=args.refs or ["HEAD"],
+        refs=refs or ["HEAD"],
         base_ref=base_ref,
-        tag_scope="skipped" if args.no_tags or base_ref else "selected_refs",
-        allowed_email_regex=args.allowed_email_regex,
+        tag_scope="skipped" if not scan_tags or base_ref else "selected_refs",
+        allowed_email_regex=email_pattern,
         finding_count=len(findings),
+    )
+
+
+def build_summary(args: argparse.Namespace, findings: list[Finding], status: str) -> CheckSummary:
+    return summarize_metadata_check(
+        refs=args.refs or ["HEAD"],
+        email_pattern=args.allowed_email_regex,
+        findings=findings,
+        status=status,
+        base_ref=args.base_ref or None,
+        scan_tags=not args.no_tags,
     )
 
 
