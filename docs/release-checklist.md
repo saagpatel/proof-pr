@@ -32,8 +32,8 @@ dogfood notes, or publication docs change.
 ## Tagging
 
 ```bash
-git tag -a v0.1.0 -m "proof-pr v0.1.0"
-git push origin v0.1.0
+git tag -a vX.Y.Z -m "proof-pr vX.Y.Z"
+git push origin vX.Y.Z
 ```
 
 Do not treat the receipt JSON as release provenance. Release artifacts should
