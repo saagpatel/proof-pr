@@ -57,6 +57,11 @@ Caller workflows should grant explicit read permissions to the reusable workflow
 job. Without the `contents: read` and `actions: read` stanza, GitHub can fail a
 new caller workflow before any job logs are produced.
 
+For new consumer repos, start with `workflow_dispatch`. After a manual run
+passes on `main`, add `pull_request` if the repo wants proof visibility during
+review. See `docs/stable-dogfood-contract.md` for the v0.2 adoption boundary and
+the advisory versus soft-gate enforcement modes.
+
 ## Inline Workflow
 
 ```yaml
