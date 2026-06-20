@@ -21,6 +21,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from . import __version__
 from .validate_receipts import validate_receipt
 
 STATUSES = {
@@ -167,7 +168,7 @@ def _default_receipt(cwd: Path, *, tier: str, summary: str, agent: str, mode: st
         },
         "producer": {
             "tool": "proof-pr",
-            "version": "0.1.0-draft",
+            "version": __version__,
             "agent": agent,
             "mode": mode,
         },
