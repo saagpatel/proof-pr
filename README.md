@@ -76,6 +76,7 @@ python3 scripts/proof_pr.py receipt-hygiene proof-pr.json
 python3 scripts/proof_pr.py receipt-hygiene proof-pr.json --explain
 python3 scripts/proof_pr.py receipt-hygiene proof-pr.json --explain --check public-git-metadata --fix-only
 python3 scripts/proof_pr.py receipt-hygiene proof-pr.json --json
+python3 scripts/test_receipt_hygiene_cli.py
 python3 scripts/proof_pr.py validate proof-pr.json
 proof-pr check-public-git-metadata --ref HEAD --ref 'refs/tags/v*'
 proof-pr check-public-git-metadata --base-ref origin/main --ref HEAD

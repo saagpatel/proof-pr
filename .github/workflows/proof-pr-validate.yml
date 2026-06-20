@@ -20,6 +20,8 @@ jobs:
         env:
           PUBLIC_METADATA_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
         run: proof-pr check-public-git-metadata --ref "$PUBLIC_METADATA_REF" --ref 'refs/tags/v*'
+      - name: Test receipt hygiene CLI behavior
+        run: python3 scripts/test_receipt_hygiene_cli.py --proof-pr proof-pr
       - name: Validate example receipts
         run: proof-pr validate examples/pr-*.json
       - name: Render sample proof summary

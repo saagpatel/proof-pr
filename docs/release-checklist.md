@@ -15,10 +15,12 @@ Use this checklist before tagging a `proof-pr` release.
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 python3 scripts/proof_pr.py validate examples/pr-*.json
+python3 scripts/test_receipt_hygiene_cli.py
 python3 scripts/check_public_git_metadata.py --ref HEAD --ref 'refs/tags/v*'
 tmpdir=$(mktemp -d)
 python3 -m venv "$tmpdir/venv"
 "$tmpdir/venv/bin/python" -m pip install .
+"$tmpdir/venv/bin/python" scripts/test_receipt_hygiene_cli.py --proof-pr "$tmpdir/venv/bin/proof-pr"
 "$tmpdir/venv/bin/proof-pr" check-public-git-metadata --ref HEAD --ref 'refs/tags/v*'
 "$tmpdir/venv/bin/proof-pr" validate examples/pr-*.json
 "$tmpdir/venv/bin/proof-pr" render examples/pr-024-sample-dashboard-rollups.json
