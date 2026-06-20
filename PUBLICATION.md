@@ -22,6 +22,7 @@ Before widening visibility or cutting releases, run:
 ```bash
 gitleaks detect --source . --no-banner --redact --verbose
 rg -n --hidden --glob '!/.git/**' '(<private-repo>|<local-path>|<token-prefix>)'
+python3 scripts/check_public_git_metadata.py --ref HEAD --ref 'refs/tags/v*'
 PYTHONDONTWRITEBYTECODE=1 python3 scripts/proof_pr.py validate examples/pr-*.json
 python3 -m pip install .
 proof-pr validate examples/pr-*.json
