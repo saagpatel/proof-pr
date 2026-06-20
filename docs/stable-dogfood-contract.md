@@ -45,6 +45,7 @@ jobs:
       proof_pr_ref: v0.2.7
       artifact_name: proof-pr
       artifact_glob: proof-pr-artifacts/**
+      proof_summary_filename: proof-pr-summary.md
       check_public_git_metadata: false
       # Established repos can opt into new-commit metadata checks with:
       # public_git_metadata_mode: introduced
@@ -138,6 +139,10 @@ that pattern as authoring guidance so proof authors can start from
 the rendered proof block as `proof-pr-summary.md` alongside the receipt, so
 reviewers can inspect `Pattern:` and other rendered claims from the proof
 artifact bundle.
+
+`v0.2.14` keeps the same receipt contract and adds `proof_summary_filename` so
+callers can name the rendered summary file in their artifact bundle without
+changing receipt JSON.
 
 Established public repos should start with `public_git_metadata_mode:
 introduced`, which checks only commits introduced by the workflow ref relative
