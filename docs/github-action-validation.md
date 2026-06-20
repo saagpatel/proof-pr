@@ -125,9 +125,11 @@ wants the command or patch for one hygiene finding. `--strict` makes warnings
 fail for repos that want a soft gate after dogfooding.
 
 The reusable workflow runs `receipt-hygiene` by default after validation and
-writes the result to the job summary. Keep `receipt_hygiene_strict: false` while
-adopting; set it to `true` only after the repo's receipts consistently pass
-hygiene locally and in CI.
+writes the result to the job summary. It also appends a focused public git
+metadata fix block when that finding exists, so authors get the compact command
+or receipt patch without reading every advisory. Keep
+`receipt_hygiene_strict: false` while adopting; set it to `true` only after the
+repo's receipts consistently pass hygiene locally and in CI.
 
 Caller workflows should grant explicit read permissions to the reusable workflow
 job. Without the `contents: read` and `actions: read` stanza, GitHub can fail a

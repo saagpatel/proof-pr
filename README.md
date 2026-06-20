@@ -125,4 +125,5 @@ patch examples for missing evidence. Add `--check <id>` to focus on one finding
 and `--fix-only` to print just the remediation command/patch block. Add
 `--strict` when a repo wants hygiene warnings to fail CI.
 The reusable workflow writes these suggestions to the job summary by default in
-advisory mode.
+advisory mode, followed by a focused public git metadata fix block when that
+finding exists.

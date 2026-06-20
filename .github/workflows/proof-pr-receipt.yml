@@ -177,7 +177,17 @@ jobs:
           {
             echo "## receipt hygiene"
             echo
-            proof-pr receipt-hygiene "${args[@]}"
+            hygiene_status=0
+            proof-pr receipt-hygiene "${args[@]}" || hygiene_status=$?
+            echo
+            echo "### focused fixes"
+            echo
+            if proof-pr receipt-hygiene "$RECEIPT_PATH" --explain --check public-git-metadata --fix-only; then
+              :
+            else
+              echo "_No focused public git metadata fix suggested._"
+            fi
+            exit "$hygiene_status"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Render proof summary
