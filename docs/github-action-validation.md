@@ -36,10 +36,10 @@ jobs:
     permissions:
       contents: read
       actions: read
-    uses: saagpatel/proof-pr/.github/workflows/proof-pr-receipt.yml@v0.2.6
+    uses: saagpatel/proof-pr/.github/workflows/proof-pr-receipt.yml@v0.2.7
     with:
       receipt_path: proof-pr.json
-      proof_pr_ref: v0.2.6
+      proof_pr_ref: v0.2.7
       artifact_name: proof-pr
       artifact_glob: proof-pr-artifacts/**
       check_public_git_metadata: false
@@ -114,11 +114,13 @@ Before review, run hygiene in advisory mode:
 
 ```bash
 proof-pr receipt-hygiene proof-pr.json
+proof-pr receipt-hygiene proof-pr.json --explain
 ```
 
 `receipt-hygiene` is read-only. It suggests missing standard evidence by risk
-tier; `--strict` makes warnings fail for repos that want a soft gate after
-dogfooding.
+tier. Use `--explain` locally when an author wants copyable commands and compact
+receipt patch examples. `--strict` makes warnings fail for repos that want a
+soft gate after dogfooding.
 
 The reusable workflow runs `receipt-hygiene` by default after validation and
 writes the result to the job summary. Keep `receipt_hygiene_strict: false` while

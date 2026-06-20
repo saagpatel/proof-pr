@@ -38,10 +38,10 @@ jobs:
     permissions:
       contents: read
       actions: read
-    uses: saagpatel/proof-pr/.github/workflows/proof-pr-receipt.yml@v0.2.6
+    uses: saagpatel/proof-pr/.github/workflows/proof-pr-receipt.yml@v0.2.7
     with:
       receipt_path: proof-pr.json
-      proof_pr_ref: v0.2.6
+      proof_pr_ref: v0.2.7
       artifact_name: proof-pr
       artifact_glob: proof-pr-artifacts/**
       check_public_git_metadata: false
@@ -111,6 +111,9 @@ suggestions for common missing evidence.
 
 `v0.2.6` keeps the same receipt contract and writes receipt hygiene suggestions
 into reusable workflow job summaries by default.
+
+`v0.2.7` keeps the same receipt contract and adds read-only hygiene explain
+output with copyable commands and compact receipt patch examples.
 
 Established public repos should start with `public_git_metadata_mode:
 introduced`, which checks only commits introduced by the workflow ref relative

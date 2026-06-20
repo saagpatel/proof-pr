@@ -614,14 +614,25 @@ def _hygiene_finding(
     severity: str,
     message: str,
     suggestion: str,
-) -> dict[str, str]:
-    return {
+) -> dict[str, Any]:
+    finding: dict[str, Any] = {
         "check": check,
         "status": status,
         "severity": severity,
         "message": message,
         "suggestion": suggestion,
     }
+    return finding
+
+
+def _with_command(finding: dict[str, Any], command: list[str]) -> dict[str, Any]:
+    finding["command"] = command
+    return finding
+
+
+def _with_patch(finding: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
+    finding["receipt_patch"] = patch
+    return finding
 
 
 def _posture_status(receipt: dict[str, Any], key: str) -> str | None:
@@ -637,7 +648,7 @@ def _changed_surfaces(receipt: dict[str, Any]) -> set[str]:
     return {str(surface).lower() for surface in surfaces if isinstance(surface, str)}
 
 
-def _receipt_hygiene_findings(receipt: dict[str, Any]) -> list[dict[str, str]]:
+def _receipt_hygiene_findings(receipt: dict[str, Any]) -> list[dict[str, Any]]:
     risk = receipt.get("risk", {})
     tier = risk.get("tier") if isinstance(risk, dict) else None
     tier_index = {"T0": 0, "T1": 1, "T2": 2, "T3": 3, "T4": 4}.get(str(tier), -1)
@@ -648,15 +659,47 @@ def _receipt_hygiene_findings(receipt: dict[str, Any]) -> list[dict[str, str]]:
     if tier_index >= 3:
         if not public_metadata:
             findings.append(
-                _hygiene_finding(
-                    check="public-git-metadata",
-                    status="missing",
-                    severity="warning",
-                    message="T3/T4 receipts should state whether public git metadata was checked.",
-                    suggestion=(
-                        "Run proof-pr collect-public-git-metadata --receipt <path> "
-                        "--base-ref origin/main --ref HEAD, or mark why it is not applicable."
+                _with_command(
+                    _with_patch(
+                        _hygiene_finding(
+                            check="public-git-metadata",
+                            status="missing",
+                            severity="warning",
+                            message=(
+                                "T3/T4 receipts should state whether public git metadata "
+                                "was checked."
+                            ),
+                            suggestion=(
+                                "Run the metadata collector, or add an explicit "
+                                "not_applicable evidence item with the reason."
+                            ),
+                        ),
+                        {
+                            "evidence": [
+                                {
+                                    "id": "public-git-metadata",
+                                    "kind": "security",
+                                    "status": "not_applicable",
+                                    "required": False,
+                                    "summary": (
+                                        "Public git metadata check was not applicable "
+                                        "for this private/local-only change."
+                                    ),
+                                    "reason": "Replace with the bounded reason.",
+                                }
+                            ]
+                        },
                     ),
+                    [
+                        "proof-pr",
+                        "collect-public-git-metadata",
+                        "--receipt",
+                        "<path>",
+                        "--base-ref",
+                        "origin/main",
+                        "--ref",
+                        "HEAD",
+                    ],
                 )
             )
         elif public_metadata.get("status") not in PASSING_STATUSES:
@@ -673,12 +716,26 @@ def _receipt_hygiene_findings(receipt: dict[str, Any]) -> list[dict[str, str]]:
     secrets_status = _posture_status(receipt, "secrets_scan")
     if tier_index >= 3 and secrets_status not in PASSING_STATUSES:
         findings.append(
-            _hygiene_finding(
-                check="secrets-scan",
-                status=secrets_status or "missing",
-                severity="warning",
-                message="T3/T4 receipts should carry a passing secrets posture.",
-                suggestion="Run the repo secrets scan or document a bounded reason it is partial.",
+            _with_patch(
+                _hygiene_finding(
+                    check="secrets-scan",
+                    status=secrets_status or "missing",
+                    severity="warning",
+                    message="T3/T4 receipts should carry a passing secrets posture.",
+                    suggestion=(
+                        "Run the repo secrets scan, or document a bounded partial/skipped "
+                        "reason if it cannot run."
+                    ),
+                ),
+                {
+                    "security": {
+                        "secrets_scan": {
+                            "status": "partial",
+                            "summary": "Secrets scan could not be completed before review.",
+                            "reason": "Replace with the bounded reason and follow-up.",
+                        }
+                    }
+                },
             )
         )
     elif secrets_status in ATTENTION_STATUSES:
@@ -696,12 +753,28 @@ def _receipt_hygiene_findings(receipt: dict[str, Any]) -> list[dict[str, str]]:
     workflow_touched = bool(changed_surfaces & WORKFLOW_SURFACES)
     if workflow_touched and permission_status not in PASSING_STATUSES:
         findings.append(
-            _hygiene_finding(
-                check="permission-posture",
-                status=permission_status or "missing",
-                severity="warning",
-                message="Workflow/permission surfaces changed without a passing permission posture.",
-                suggestion="Review workflow permissions and record the posture as passed or partial.",
+            _with_patch(
+                _hygiene_finding(
+                    check="permission-posture",
+                    status=permission_status or "missing",
+                    severity="warning",
+                    message=(
+                        "Workflow/permission surfaces changed without a passing "
+                        "permission posture."
+                    ),
+                    suggestion="Review workflow permissions and record the posture.",
+                ),
+                {
+                    "security": {
+                        "permission_diff": {
+                            "status": "passed",
+                            "summary": (
+                                "Workflow permissions were reviewed; no write or secret "
+                                "access was introduced."
+                            ),
+                        }
+                    }
+                },
             )
         )
     elif tier_index >= 3 and permission_status in ATTENTION_STATUSES:
@@ -720,32 +793,54 @@ def _receipt_hygiene_findings(receipt: dict[str, Any]) -> list[dict[str, str]]:
     rollback_path = rollback.get("path") if isinstance(rollback, dict) else None
     if rollback_status not in {"documented", "tested", "partial"}:
         findings.append(
-            _hygiene_finding(
-                check="rollback",
-                status=str(rollback_status or "missing"),
-                severity="warning",
-                message="Rollback posture is missing or not actionable.",
-                suggestion="Add a concrete revert, disable, rollback, or mitigation path.",
+            _with_patch(
+                _hygiene_finding(
+                    check="rollback",
+                    status=str(rollback_status or "missing"),
+                    severity="warning",
+                    message="Rollback posture is missing or not actionable.",
+                    suggestion="Add a concrete revert, disable, rollback, or mitigation path.",
+                ),
+                {
+                    "rollback": {
+                        "status": "documented",
+                        "path": "Revert this PR, or disable the changed workflow/feature.",
+                    }
+                },
             )
         )
     elif not isinstance(rollback_path, str) or not rollback_path:
         findings.append(
-            _hygiene_finding(
-                check="rollback",
-                status="missing-path",
-                severity="warning",
-                message="Rollback status exists but the path is empty.",
-                suggestion="Add a concrete rollback path.",
+            _with_patch(
+                _hygiene_finding(
+                    check="rollback",
+                    status="missing-path",
+                    severity="warning",
+                    message="Rollback status exists but the path is empty.",
+                    suggestion="Add a concrete rollback path.",
+                ),
+                {
+                    "rollback": {
+                        "path": "Revert this PR, or disable the changed workflow/feature."
+                    }
+                },
             )
         )
     elif tier_index >= 2 and rollback_path == DEFAULT_ROLLBACK_PATH:
         findings.append(
-            _hygiene_finding(
-                check="rollback",
-                status="generic",
-                severity="info",
-                message="Rollback path is still the generic draft default.",
-                suggestion="Replace it with the repo-specific rollback path before review.",
+            _with_patch(
+                _hygiene_finding(
+                    check="rollback",
+                    status="generic",
+                    severity="info",
+                    message="Rollback path is still the generic draft default.",
+                    suggestion="Replace it with the repo-specific rollback path before review.",
+                ),
+                {
+                    "rollback": {
+                        "path": "Revert this PR, or disable the changed workflow/feature."
+                    }
+                },
             )
         )
 
@@ -762,7 +857,12 @@ def _receipt_hygiene_findings(receipt: dict[str, Any]) -> list[dict[str, str]]:
     return findings
 
 
-def _render_hygiene(receipt: dict[str, Any], findings: list[dict[str, str]]) -> str:
+def _render_hygiene(
+    receipt: dict[str, Any],
+    findings: list[dict[str, Any]],
+    *,
+    explain: bool = False,
+) -> str:
     tier = receipt.get("risk", {}).get("tier", "unknown")
     receipt_id = receipt.get("receipt_id", "unknown")
     lines = [
@@ -776,6 +876,12 @@ def _render_hygiene(receipt: dict[str, Any], findings: list[dict[str, str]]) -> 
             f"{finding['status']} - {finding['message']} "
             f"Suggestion: {finding['suggestion']}"
         )
+        if explain and finding.get("command"):
+            lines.append(f"  command: `{_format_command(finding['command'])}`")
+        if explain and finding.get("receipt_patch"):
+            patch = json.dumps(finding["receipt_patch"], indent=2, sort_keys=True)
+            lines.append("  receipt patch:")
+            lines.extend(f"    {line}" for line in patch.splitlines())
     return "\n".join(lines)
 
 
@@ -1005,7 +1111,7 @@ def cmd_receipt_hygiene(args: argparse.Namespace) -> int:
             )
         )
     else:
-        print(_render_hygiene(receipt, findings))
+        print(_render_hygiene(receipt, findings, explain=args.explain))
     has_warning = any(finding["severity"] == "warning" for finding in findings)
     return 1 if args.strict and has_warning else 0
 
@@ -1126,6 +1232,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     hygiene.add_argument("receipt")
     hygiene.add_argument("--json", action="store_true")
+    hygiene.add_argument(
+        "--explain",
+        action="store_true",
+        help="Include copyable commands and compact receipt patch examples",
+    )
     hygiene.add_argument(
         "--strict",
         action="store_true",
