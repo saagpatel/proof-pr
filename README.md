@@ -18,8 +18,11 @@ teams later, but v0 optimizes for fast human review of agent-created changes.
 - `PUBLICATION.md` - public safety posture and publication checks.
 - `schemas/proof-pr.v1.schema.json` - machine-readable receipt schema.
 - `examples/` - compact historical receipts from real PRs.
+- `examples/proof-pr-self-template.config.example.json` - config template for
+  using proof-pr to document its own PRs.
 - `src/proof_pr/` - dependency-free CLI and receipt validator package.
 - `scripts/` - source-checkout compatibility wrappers.
+- `scripts/test_examples_cli.py` - CLI smoke tests over the bundled examples.
 - `examples/proof-pr.config.example.json` - sample command config for a
   dashboard truth/schema consumer PR.
 - `docs/github-action-validation.md` - GitHub Action validation plan and example.
@@ -30,6 +33,28 @@ teams later, but v0 optimizes for fast human review of agent-created changes.
 - `.github/workflows/proof-pr-validate.yml` - self-check workflow that validates
   receipts and gates public git metadata for live history/tags.
 - `docs/dogfood-sample-dashboard.md` - first local dogfood run notes.
+
+## Install
+
+From a local checkout inside a virtual environment:
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python3 -m pip install .
+proof-pr validate examples/pr-*.json
+proof-pr render examples/pr-024-sample-dashboard-rollups.json
+```
+
+From GitHub (pin to a tag — consumers should not track `main` tip):
+
+```bash
+# Latest release
+python3 -m pip install "git+https://github.com/saagpatel/proof-pr.git@v0.2.14"
+
+# Or track main tip (not recommended for production use)
+python3 -m pip install git+https://github.com/saagpatel/proof-pr.git
+```
 
 ## Validate
 
@@ -45,25 +70,7 @@ The validator is intentionally lightweight. It checks structure, required
 fields, enum values, and the tier/evidence basics. It does not decide whether a
 claim is true; the receipt author still owns honest evidence.
 
-## Install
-
-From a local checkout inside a virtual environment:
-
-```bash
-python3 -m venv .venv
-. .venv/bin/activate
-python3 -m pip install .
-proof-pr validate examples/pr-*.json
-proof-pr render examples/pr-024-sample-dashboard-rollups.json
-```
-
-From GitHub:
-
-```bash
-python3 -m pip install git+https://github.com/saagpatel/proof-pr.git
-```
-
-## CLI MVP
+## CLI Usage
 
 ```bash
 python3 scripts/proof_pr.py init --cwd /path/to/repo --tier T2 --summary "Short PR summary" --output proof-pr.json

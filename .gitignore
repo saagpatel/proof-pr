@@ -4,3 +4,4 @@ proof-pr.json
 build/
 dist/
 *.egg-info/
+.DS_Store
