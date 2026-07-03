@@ -19,7 +19,13 @@ jobs:
       - name: Check public git metadata
         env:
           PUBLIC_METADATA_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-        run: proof-pr check-public-git-metadata --ref "$PUBLIC_METADATA_REF" --ref 'refs/tags/v*'
+          PUBLIC_METADATA_BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || '' }}
+        run: |
+          if [ -n "$PUBLIC_METADATA_BASE_REF" ]; then
+            proof-pr check-public-git-metadata --base-ref "$PUBLIC_METADATA_BASE_REF" --ref "$PUBLIC_METADATA_REF"
+          else
+            proof-pr check-public-git-metadata --ref "$PUBLIC_METADATA_REF" --ref 'refs/tags/v*'
+          fi
       - name: Test receipt hygiene CLI behavior
         run: python3 scripts/test_receipt_hygiene_cli.py --proof-pr proof-pr
       - name: Test examples CLI behavior
