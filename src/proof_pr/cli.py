@@ -81,6 +81,12 @@ SENSITIVE_VALUE_RE = re.compile(
     r"AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9-]{10,}|"
     r"(?:token|secret|password|api[_-]?key)\s*[:=]\s*[^\s,;]+)"
 )
+PUBLIC_RISK_TIER_LABELS = {
+    "T0": "T0",
+    "T1": "T1",
+    "T2": "T2",
+    "T3": "T3",
+}
 WORKFLOW_SURFACES = {
     "ci",
     "github-actions",
@@ -971,7 +977,7 @@ def _receipt_hygiene_findings(receipt: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def _render_hygiene(
-    receipt: dict[str, Any],
+    receipt_summary: dict[str, str],
     findings: list[dict[str, Any]],
     *,
     explain: bool = False,
@@ -993,11 +999,9 @@ def _render_hygiene(
                 lines.append(f"# {safe_finding['check']}: {safe_finding['suggestion']}")
         return "\n".join(lines)
 
-    tier = _redact_for_hygiene_output(receipt.get("risk", {}).get("tier", "unknown"))
-    receipt_id = _redact_for_hygiene_output(receipt.get("receipt_id", "unknown"))
     lines = [
-        f"receipt hygiene: {receipt_id}",
-        f"risk tier: {tier}",
+        f"receipt hygiene: {receipt_summary['receipt_id']}",
+        f"risk tier: {receipt_summary['risk_tier']}",
     ]
     for finding in findings:
         safe_finding = _redact_for_hygiene_output(finding)
@@ -1014,6 +1018,24 @@ def _render_hygiene(
             lines.append("  receipt patch:")
             lines.extend(f"    {line}" for line in patch.splitlines())
     return "\n".join(lines)
+
+
+def _receipt_hygiene_summary(receipt: dict[str, Any]) -> dict[str, str]:
+    receipt_id = receipt.get("receipt_id")
+    raw_tier = receipt.get("risk", {}).get("tier")
+    return {
+        "receipt_id": "present" if isinstance(receipt_id, str) and receipt_id else "unknown",
+        "risk_tier": _public_risk_tier_label(raw_tier),
+    }
+
+
+def _public_risk_tier_label(value: Any) -> str:
+    if not isinstance(value, str) or not value:
+        return "unknown"
+    for raw, label in PUBLIC_RISK_TIER_LABELS.items():
+        if value == raw:
+            return label
+    return "[REDACTED]"
 
 
 def _redact_for_hygiene_output(value: Any) -> Any:
@@ -1285,22 +1307,28 @@ def cmd_receipt_hygiene(args: argparse.Namespace) -> int:
     if args.fix_only and not args.explain:
         print("--fix-only requires --explain", file=sys.stderr)
         return 2
+    receipt_summary = _receipt_hygiene_summary(receipt)
+    safe_findings = _redact_for_hygiene_output(findings)
     if args.json:
-        safe_findings = _redact_for_hygiene_output(findings)
         print(
             json.dumps(
                 {
-                    "receipt_id": _redact_for_hygiene_output(receipt.get("receipt_id")),
-                    "risk_tier": _redact_for_hygiene_output(
-                        receipt.get("risk", {}).get("tier")
-                    ),
+                    "receipt_id": receipt_summary["receipt_id"],
+                    "risk_tier": receipt_summary["risk_tier"],
                     "findings": safe_findings,
                 },
                 indent=2,
             )
         )
     else:
-        print(_render_hygiene(receipt, findings, explain=args.explain, fix_only=args.fix_only))
+        print(
+            _render_hygiene(
+                receipt_summary,
+                safe_findings,
+                explain=args.explain,
+                fix_only=args.fix_only,
+            )
+        )
     has_warning = any(finding["severity"] == "warning" for finding in findings)
     return 1 if args.strict and has_warning else 0
 
