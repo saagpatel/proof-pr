@@ -57,6 +57,13 @@ def _expect(
     print(f"{name}: passed")
 
 
+def _fail(name: str, result: subprocess.CompletedProcess[str]) -> None:
+    print(f"{name}: failed", file=sys.stderr)
+    print(f"stdout: {result.stdout!r}", file=sys.stderr)
+    print(f"stderr: {result.stderr!r}", file=sys.stderr)
+    raise SystemExit(1)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -115,6 +122,38 @@ def main(argv: list[str] | None = None) -> int:
         returncode=2,
         stderr_contains="receipt hygiene: no finding for check public-git-metadata",
     )
+
+    example_receipt_id = "example-sample-dashboard-pr-24-6d2f94b"
+    normal_json = _run(
+        proof_pr,
+        "receipt-hygiene",
+        "examples/pr-024-sample-dashboard-rollups.json",
+        "--json",
+    )
+    _expect(
+        "receipt hygiene json summarizes receipt id",
+        normal_json,
+        returncode=0,
+        stdout_contains='"receipt_id": "present"',
+        stderr_empty=True,
+    )
+    if example_receipt_id in normal_json.stdout:
+        _fail("receipt hygiene json leaked the raw receipt id", normal_json)
+
+    normal_text = _run(
+        proof_pr,
+        "receipt-hygiene",
+        "examples/pr-024-sample-dashboard-rollups.json",
+    )
+    _expect(
+        "receipt hygiene text summarizes receipt id",
+        normal_text,
+        returncode=0,
+        stdout_contains="receipt hygiene: present",
+        stderr_empty=True,
+    )
+    if example_receipt_id in normal_text.stdout:
+        _fail("receipt hygiene text leaked the raw receipt id", normal_text)
 
     with tempfile.TemporaryDirectory() as tmp:
         source = ROOT / "examples" / "pr-024-sample-dashboard-rollups.json"
