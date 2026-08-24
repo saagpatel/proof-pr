@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -113,6 +115,40 @@ def main(argv: list[str] | None = None) -> int:
         returncode=2,
         stderr_contains="receipt hygiene: no finding for check public-git-metadata",
     )
+
+    with tempfile.TemporaryDirectory() as tmp:
+        source = ROOT / "examples" / "pr-024-sample-dashboard-rollups.json"
+        receipt = Path(tmp) / "receipt-with-sensitive-looking-values.json"
+        data = json.loads(source.read_text(encoding="utf-8"))
+        data["receipt_id"] = "ghp_0123456789abcdefghijklmnop"
+        data["risk"]["tier"] = "token=super-secret-value"
+        receipt.write_text(json.dumps(data), encoding="utf-8")
+
+        redacted_json = _run(proof_pr, "receipt-hygiene", str(receipt), "--json")
+        _expect(
+            "receipt hygiene json redacts sensitive-looking values",
+            redacted_json,
+            returncode=0,
+            stdout_contains="[REDACTED]",
+            stderr_empty=True,
+        )
+        if "ghp_0123456789abcdefghijklmnop" in redacted_json.stdout:
+            _fail("receipt hygiene json leaked a sensitive-looking token", redacted_json)
+        if "super-secret-value" in redacted_json.stdout:
+            _fail("receipt hygiene json leaked a sensitive-looking assignment", redacted_json)
+
+        redacted_text = _run(proof_pr, "receipt-hygiene", str(receipt))
+        _expect(
+            "receipt hygiene text redacts sensitive-looking values",
+            redacted_text,
+            returncode=0,
+            stdout_contains="[REDACTED]",
+            stderr_empty=True,
+        )
+        if "ghp_0123456789abcdefghijklmnop" in redacted_text.stdout:
+            _fail("receipt hygiene text leaked a sensitive-looking token", redacted_text)
+        if "super-secret-value" in redacted_text.stdout:
+            _fail("receipt hygiene text leaked a sensitive-looking assignment", redacted_text)
 
     return 0
 

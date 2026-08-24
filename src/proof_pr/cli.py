@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shlex
 import subprocess
 import sys
@@ -62,6 +63,24 @@ NON_GREEN_SECURITY = {"failed", "blocked", "skipped", "stale", "partial"}
 MAX_RENDERED_COMMAND_CHARS = 96
 PASSING_STATUSES = {"passed", "passed_with_warnings"}
 ATTENTION_STATUSES = {"failed", "blocked", "skipped", "stale", "partial"}
+SENSITIVE_OUTPUT_KEYS = {
+    "access_token",
+    "api_key",
+    "authorization",
+    "client_secret",
+    "credential",
+    "credentials",
+    "github_token",
+    "password",
+    "private_key",
+    "secret",
+    "token",
+}
+SENSITIVE_VALUE_RE = re.compile(
+    r"(?i)(gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|"
+    r"AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9-]{10,}|"
+    r"(?:token|secret|password|api[_-]?key)\s*[:=]\s*[^\s,;]+)"
+)
 WORKFLOW_SURFACES = {
     "ci",
     "github-actions",
@@ -961,36 +980,59 @@ def _render_hygiene(
     if fix_only:
         lines: list[str] = []
         for finding in findings:
-            if finding.get("command"):
-                lines.append(_format_command(finding["command"]))
-            if finding.get("receipt_patch"):
+            safe_finding = _redact_for_hygiene_output(finding)
+            if safe_finding.get("command"):
+                lines.append(_format_command(safe_finding["command"]))
+            if safe_finding.get("receipt_patch"):
                 if lines:
                     lines.append("")
-                lines.append(json.dumps(finding["receipt_patch"], indent=2, sort_keys=True))
-            if not finding.get("command") and not finding.get("receipt_patch"):
-                lines.append(f"# {finding['check']}: {finding['suggestion']}")
+                lines.append(
+                    json.dumps(safe_finding["receipt_patch"], indent=2, sort_keys=True)
+                )
+            if not safe_finding.get("command") and not safe_finding.get("receipt_patch"):
+                lines.append(f"# {safe_finding['check']}: {safe_finding['suggestion']}")
         return "\n".join(lines)
 
-    tier = receipt.get("risk", {}).get("tier", "unknown")
-    receipt_id = receipt.get("receipt_id", "unknown")
+    tier = _redact_for_hygiene_output(receipt.get("risk", {}).get("tier", "unknown"))
+    receipt_id = _redact_for_hygiene_output(receipt.get("receipt_id", "unknown"))
     lines = [
         f"receipt hygiene: {receipt_id}",
         f"risk tier: {tier}",
     ]
     for finding in findings:
+        safe_finding = _redact_for_hygiene_output(finding)
         lines.append(
             "- "
-            f"{finding['severity']} {finding['check']}: "
-            f"{finding['status']} - {finding['message']} "
-            f"Suggestion: {finding['suggestion']}"
+            f"{safe_finding['severity']} {safe_finding['check']}: "
+            f"{safe_finding['status']} - {safe_finding['message']} "
+            f"Suggestion: {safe_finding['suggestion']}"
         )
-        if explain and finding.get("command"):
-            lines.append(f"  command: `{_format_command(finding['command'])}`")
-        if explain and finding.get("receipt_patch"):
-            patch = json.dumps(finding["receipt_patch"], indent=2, sort_keys=True)
+        if explain and safe_finding.get("command"):
+            lines.append(f"  command: `{_format_command(safe_finding['command'])}`")
+        if explain and safe_finding.get("receipt_patch"):
+            patch = json.dumps(safe_finding["receipt_patch"], indent=2, sort_keys=True)
             lines.append("  receipt patch:")
             lines.extend(f"    {line}" for line in patch.splitlines())
     return "\n".join(lines)
+
+
+def _redact_for_hygiene_output(value: Any) -> Any:
+    if isinstance(value, dict):
+        redacted: dict[str, Any] = {}
+        for key, item in value.items():
+            normalized_key = str(key).lower().replace("-", "_")
+            if normalized_key in SENSITIVE_OUTPUT_KEYS:
+                redacted[key] = "[REDACTED]"
+            else:
+                redacted[key] = _redact_for_hygiene_output(item)
+        return redacted
+    if isinstance(value, list):
+        return [_redact_for_hygiene_output(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_redact_for_hygiene_output(item) for item in value)
+    if isinstance(value, str):
+        return SENSITIVE_VALUE_RE.sub("[REDACTED]", value)
+    return value
 
 
 def _status_line(item: dict[str, Any], *, full_commands: bool = False) -> str:
@@ -1244,12 +1286,15 @@ def cmd_receipt_hygiene(args: argparse.Namespace) -> int:
         print("--fix-only requires --explain", file=sys.stderr)
         return 2
     if args.json:
+        safe_findings = _redact_for_hygiene_output(findings)
         print(
             json.dumps(
                 {
-                    "receipt_id": receipt.get("receipt_id"),
-                    "risk_tier": receipt.get("risk", {}).get("tier"),
-                    "findings": findings,
+                    "receipt_id": _redact_for_hygiene_output(receipt.get("receipt_id")),
+                    "risk_tier": _redact_for_hygiene_output(
+                        receipt.get("risk", {}).get("tier")
+                    ),
+                    "findings": safe_findings,
                 },
                 indent=2,
             )

@@ -8,7 +8,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from proof_pr.cli import main
+
+def main() -> int:
+    from proof_pr.cli import main as cli_main
+
+    return cli_main()
 
 
 if __name__ == "__main__":
