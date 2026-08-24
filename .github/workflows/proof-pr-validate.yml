@@ -32,6 +32,8 @@ jobs:
         run: python3 scripts/test_examples_cli.py --proof-pr proof-pr
       - name: Test example pattern authoring metadata
         run: python3 scripts/test_example_pattern_cli.py --proof-pr proof-pr
+      - name: Test receipt validation contract
+        run: python3 scripts/test_validation_contract.py
       - name: Validate example receipts
         run: proof-pr validate examples/pr-*.json
       - name: Render sample proof summary

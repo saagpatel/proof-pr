@@ -191,6 +191,7 @@
             "diff-review",
             "repo-native",
             "test",
+            "ci",
             "lint",
             "typecheck",
             "build",
