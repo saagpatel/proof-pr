@@ -87,6 +87,52 @@ PUBLIC_RISK_TIER_LABELS = {
     "T2": "T2",
     "T3": "T3",
 }
+PUBLIC_HYGIENE_CHECK_LABELS = {
+    "permission-posture": "permission-posture",
+    "public-git-metadata": "public-git-metadata",
+    "receipt-hygiene": "receipt-hygiene",
+    "rollback": "rollback",
+    "secrets-scan": "secrets-scan",
+}
+PUBLIC_HYGIENE_SEVERITY_LABELS = {
+    "info": "info",
+    "ok": "ok",
+    "warning": "warning",
+}
+PUBLIC_HYGIENE_STATUS_LABELS = {
+    "blocked": "blocked",
+    "failed": "failed",
+    "generic": "generic",
+    "missing": "missing",
+    "missing-path": "missing-path",
+    "partial": "partial",
+    "passed": "passed",
+    "skipped": "skipped",
+    "stale": "stale",
+    "unknown": "unknown",
+}
+PUBLIC_HYGIENE_DETAILS = {
+    "permission-posture": {
+        "message": "Workflow permission posture needs review.",
+        "suggestion": "Review workflow permissions and record the posture.",
+    },
+    "public-git-metadata": {
+        "message": "Public git metadata posture needs review.",
+        "suggestion": "Run the metadata collector or document an explicit limitation.",
+    },
+    "receipt-hygiene": {
+        "message": "Standard hygiene checks found no missing evidence.",
+        "suggestion": "No action needed.",
+    },
+    "rollback": {
+        "message": "Rollback posture needs review.",
+        "suggestion": "Add a concrete revert, disable, rollback, or mitigation path.",
+    },
+    "secrets-scan": {
+        "message": "Secrets posture needs review.",
+        "suggestion": "Run the repo secrets scan or document a bounded limitation.",
+    },
+}
 WORKFLOW_SURFACES = {
     "ci",
     "github-actions",
@@ -1029,6 +1075,122 @@ def _receipt_hygiene_summary(receipt: dict[str, Any]) -> dict[str, str]:
     }
 
 
+def _public_hygiene_findings(findings: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [_public_hygiene_finding(finding) for finding in findings]
+
+
+def _public_hygiene_finding(finding: dict[str, Any]) -> dict[str, Any]:
+    check = _public_hygiene_check_label(finding.get("check"))
+    details = PUBLIC_HYGIENE_DETAILS[check]
+    public: dict[str, Any] = {
+        "check": check,
+        "status": _public_hygiene_status_label(finding.get("status")),
+        "severity": _public_hygiene_severity_label(finding.get("severity")),
+        "message": details["message"],
+        "suggestion": details["suggestion"],
+    }
+    command = _public_hygiene_command(check, finding)
+    if command:
+        public["command"] = command
+    patch = _public_hygiene_patch(check, finding)
+    if patch:
+        public["receipt_patch"] = patch
+    return public
+
+
+def _public_hygiene_check_label(value: Any) -> str:
+    if not isinstance(value, str):
+        return "receipt-hygiene"
+    for raw, label in PUBLIC_HYGIENE_CHECK_LABELS.items():
+        if value == raw:
+            return label
+    return "receipt-hygiene"
+
+
+def _public_hygiene_status_label(value: Any) -> str:
+    if not isinstance(value, str):
+        return "unknown"
+    for raw, label in PUBLIC_HYGIENE_STATUS_LABELS.items():
+        if value == raw:
+            return label
+    return "unknown"
+
+
+def _public_hygiene_severity_label(value: Any) -> str:
+    if not isinstance(value, str):
+        return "warning"
+    for raw, label in PUBLIC_HYGIENE_SEVERITY_LABELS.items():
+        if value == raw:
+            return label
+    return "warning"
+
+
+def _public_hygiene_command(check: str, finding: dict[str, Any]) -> list[str] | None:
+    if check == "public-git-metadata" and finding.get("command"):
+        return [
+            "proof-pr",
+            "collect-public-git-metadata",
+            "--receipt",
+            "<path>",
+            "--base-ref",
+            "origin/main",
+            "--ref",
+            "HEAD",
+        ]
+    return None
+
+
+def _public_hygiene_patch(check: str, finding: dict[str, Any]) -> dict[str, Any] | None:
+    if not finding.get("receipt_patch"):
+        return None
+    if check == "public-git-metadata":
+        return {
+            "evidence": [
+                {
+                    "id": "public-git-metadata",
+                    "kind": "security",
+                    "status": "not_applicable",
+                    "required": False,
+                    "summary": (
+                        "Public git metadata check was not applicable for this "
+                        "private/local-only change."
+                    ),
+                    "reason": "Replace with the bounded reason.",
+                }
+            ]
+        }
+    if check == "secrets-scan":
+        return {
+            "security": {
+                "secrets_scan": {
+                    "status": "partial",
+                    "summary": "Secrets scan could not be completed before review.",
+                    "reason": "Replace with the bounded reason and follow-up.",
+                }
+            }
+        }
+    if check == "permission-posture":
+        return {
+            "security": {
+                "permission_diff": {
+                    "status": "passed",
+                    "summary": (
+                        "Workflow permissions were reviewed; no write or secret "
+                        "access was introduced."
+                    ),
+                }
+            }
+        }
+    if check == "rollback":
+        return {
+            "rollback": {
+                "status": "documented",
+                "path": "Revert this PR, or disable the changed workflow/feature.",
+            }
+        }
+    return None
+
+
 def _public_risk_tier_label(value: Any) -> str:
     if not isinstance(value, str) or not value:
         return "unknown"
@@ -1308,14 +1470,14 @@ def cmd_receipt_hygiene(args: argparse.Namespace) -> int:
         print("--fix-only requires --explain", file=sys.stderr)
         return 2
     receipt_summary = _receipt_hygiene_summary(receipt)
-    safe_findings = _redact_for_hygiene_output(findings)
+    public_findings = _public_hygiene_findings(findings)
     if args.json:
         print(
             json.dumps(
                 {
                     "receipt_id": receipt_summary["receipt_id"],
                     "risk_tier": receipt_summary["risk_tier"],
-                    "findings": safe_findings,
+                    "findings": public_findings,
                 },
                 indent=2,
             )
@@ -1324,7 +1486,7 @@ def cmd_receipt_hygiene(args: argparse.Namespace) -> int:
         print(
             _render_hygiene(
                 receipt_summary,
-                safe_findings,
+                public_findings,
                 explain=args.explain,
                 fix_only=args.fix_only,
             )
