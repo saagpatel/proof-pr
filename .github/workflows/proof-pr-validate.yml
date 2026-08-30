@@ -38,3 +38,27 @@ jobs:
         run: proof-pr validate examples/pr-*.json
       - name: Render sample proof summary
         run: proof-pr render examples/pr-024-sample-dashboard-rollups.json >> "$GITHUB_STEP_SUMMARY"
+
+  provenance-fixtures:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install optional provenance dependencies
+        run: python3 -m pip install '.[provenance]'
+      - name: Run fixture and adversarial provenance corpus
+        run: python3 scripts/test_provenance_cli.py
+      - name: Install pinned c2patool fixture verifier
+        env:
+          C2PATOOL_SHA256: 62eed34f0c90a24b696b1969c8aad4340e11ec7264e1cf6fc375ad15c1db7663
+          C2PATOOL_URL: https://github.com/contentauth/c2pa-rs/releases/download/c2patool-v0.27.16/c2patool-v0.27.16-x86_64-unknown-linux-gnu.tar.gz
+        run: |
+          curl --fail --location --silent --show-error "$C2PATOOL_URL" --output "$RUNNER_TEMP/c2patool.tar.gz"
+          echo "$C2PATOOL_SHA256  $RUNNER_TEMP/c2patool.tar.gz" | sha256sum --check --strict
+          mkdir "$RUNNER_TEMP/c2patool"
+          tar -xzf "$RUNNER_TEMP/c2patool.tar.gz" -C "$RUNNER_TEMP/c2patool"
+          chmod +x "$RUNNER_TEMP/c2patool/c2patool/c2patool"
+          echo "C2PATOOL=$RUNNER_TEMP/c2patool/c2patool/c2patool" >> "$GITHUB_ENV"
+      - name: Run bidirectional c2patool interoperability corpus
+        run: python3 scripts/test_c2patool_interop.py

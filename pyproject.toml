@@ -26,6 +26,9 @@ classifiers = [
 ]
 dependencies = []
 
+[project.optional-dependencies]
+provenance = ["c2pa-python==0.37.8"]
+
 [project.urls]
 Homepage = "https://github.com/saagpatel/proof-pr"
 Repository = "https://github.com/saagpatel/proof-pr"

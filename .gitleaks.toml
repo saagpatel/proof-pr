@@ -1,0 +1,6 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Official public C2PA FOR TESTING_ONLY fixture key"
+paths = ['''^tests/fixtures/provenance/es256_private\.fixture\.pem$''']

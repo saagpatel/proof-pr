@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://proof-pr.dev/schemas/proof-pr.artifact-provenance-report.v1.schema.json",
+  "title": "proof-pr derived artifact provenance report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "profile", "canonical_authority", "manifest_form", "c2pa", "states", "origin", "generator", "edits", "ingredients", "binding", "signature", "validation", "unknown_fields", "failure_explanations", "privacy", "claim_boundary"],
+  "properties": {
+    "schema_version": {"const": "proof-pr.artifact-provenance-report.v1"},
+    "profile": {"const": "proof-pr.c2pa.v1"},
+    "canonical_authority": {"type": "string"},
+    "manifest_form": {"type": "string"},
+    "c2pa": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["validation_state", "spec_version", "claim_version", "active_manifest"],
+      "properties": {
+        "validation_state": {"type": "string"},
+        "spec_version": {"type": ["string", "null"]},
+        "claim_version": {"type": ["integer", "null"]},
+        "active_manifest": {"type": ["string", "null"]}
+      }
+    },
+    "states": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["well_formed", "bound", "signed", "signature_valid", "valid", "trusted", "truthful"],
+      "properties": {
+        "well_formed": {"enum": ["yes", "no", "unknown"]},
+        "bound": {"enum": ["yes", "no", "unknown"]},
+        "signed": {"enum": ["yes", "no", "unknown"]},
+        "signature_valid": {"enum": ["yes", "no", "unknown"]},
+        "valid": {"enum": ["yes", "no", "unknown"]},
+        "trusted": {"enum": ["yes", "no", "unknown"]},
+        "truthful": {"const": "unknown"}
+      }
+    },
+    "origin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "instance_id", "receipt_projection"],
+      "properties": {
+        "title": {"type": ["string", "null"]},
+        "instance_id": {"type": ["string", "null"]},
+        "receipt_projection": {"type": ["object", "null"]}
+      }
+    },
+    "generator": {"type": "array", "items": {"type": "object"}},
+    "edits": {"type": "array", "items": {"type": "object"}},
+    "ingredients": {"type": "array", "items": {"type": "object"}},
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "method"],
+      "properties": {
+        "status": {"enum": ["yes", "no", "unknown"]},
+        "method": {"type": "string"}
+      }
+    },
+    "signature": {"type": ["object", "null"]},
+    "validation": {"type": "array", "items": {"type": "object"}},
+    "unknown_fields": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["assertion_labels", "all_assertion_labels"],
+      "properties": {
+        "assertion_labels": {"type": "array", "items": {"type": "string"}},
+        "all_assertion_labels": {"type": "array", "items": {"type": ["string", "null"]}}
+      }
+    },
+    "failure_explanations": {"type": "array", "items": {"type": "object"}},
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["remote_manifest_fetch", "embedded_paths", "embedded_prompts", "embedded_location"],
+      "properties": {
+        "remote_manifest_fetch": {"const": false},
+        "embedded_paths": {"const": false},
+        "embedded_prompts": {"const": false},
+        "embedded_location": {"const": false}
+      }
+    },
+    "claim_boundary": {"type": "string"}
+  }
+}

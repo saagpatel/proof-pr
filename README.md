@@ -17,6 +17,12 @@ teams later, but v0 optimizes for fast human review of agent-created changes.
 - `docs/release-checklist.md` - release preflight and verification checklist.
 - `PUBLICATION.md` - public safety posture and publication checks.
 - `schemas/proof-pr.v1.schema.json` - machine-readable receipt schema.
+- `docs/artifact-provenance-profile.md` - optional fixture-only C2PA artifact
+  profile, trust vocabulary, format matrix, and migration path.
+- `docs/provenance-privacy-threat-model.md` - portable metadata and parser threat
+  model.
+- `schemas/proof-pr.artifact-provenance-report.v1.schema.json` - schema for the
+  derived, non-authoritative inspector report.
 - `examples/` - compact historical receipts from real PRs.
 - `examples/proof-pr-self-template.config.example.json` - config template for
   using proof-pr to document its own PRs.
@@ -45,6 +51,24 @@ python3 -m pip install .
 proof-pr validate examples/pr-*.json
 proof-pr render examples/pr-024-sample-dashboard-rollups.json
 ```
+
+Portable provenance support is optional and pins the native-backed SDK used by
+the frozen fixture corpus:
+
+```bash
+python3 -m pip install -e '.[provenance]'
+python3 scripts/test_provenance_cli.py
+```
+
+With the checksum-verified official `c2patool` 0.27.16 binary available, run
+the pinned PNG/JPEG embedded/detached bidirectional readback:
+
+```bash
+python3 scripts/test_c2patool_interop.py --c2patool /path/to/c2patool
+```
+
+This proves an independent CLI/process surface only. Both paths use
+`c2pa-rs`, fixture trust remains unknown, and truthfulness is never inferred.
 
 From GitHub (pin to a tag — consumers should not track `main` tip):
 
@@ -96,12 +120,20 @@ proof-pr check-public-git-metadata --ref HEAD --ref 'refs/tags/v*'
 proof-pr check-public-git-metadata --base-ref origin/main --ref HEAD
 proof-pr check-public-git-metadata --base-ref origin/main --ref HEAD --summary-format text
 proof-pr collect-public-git-metadata --receipt proof-pr.json --base-ref origin/main --ref HEAD
+proof-pr provenance create --source fixture.png --output signed.png --receipt proof-pr.json --artifact-id fixture-png --fixture-cert tests/fixtures/provenance/es256_certs.fixture.pem --fixture-key tests/fixtures/provenance/es256_private.fixture.pem
+proof-pr provenance verify signed.png --output provenance-report.json
 ```
 
 The CLI is local-only in v0. It can draft receipt identity and diff stats, run
 configured commands into log artifacts, synthesize the final review decision,
 render the Markdown block, and validate examples. It does not update PR bodies,
 upload artifacts, or enforce merges yet.
+
+`provenance` is a fixture-only optional extension. It leaves the closed
+`proof-pr.v1` receipt unchanged and embeds only a minimal reference to an
+existing receipt artifact. The inspector reports well-formed, bound, signed,
+signature-valid, valid, trusted, and truthful separately; truthful is always
+unknown. See [the profile](docs/artifact-provenance-profile.md) before using it.
 
 By default, `render` compacts long command lines so PR bodies stay scannable.
 Use `--full-commands` when a reviewer wants complete commands inline; receipt

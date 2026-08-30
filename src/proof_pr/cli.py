@@ -29,6 +29,7 @@ from typing import Any
 
 from . import __version__
 from . import public_git_metadata
+from . import provenance
 from .validate_receipts import validate_receipt
 
 STATUSES = {
@@ -1696,6 +1697,7 @@ def build_parser() -> argparse.ArgumentParser:
     examples.set_defaults(func=cmd_examples)
 
     public_git_metadata.add_parser(subparsers)
+    provenance.add_parser(subparsers)
 
     return parser
 
@@ -1703,7 +1705,10 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
-    return args.func(args)
+    try:
+        return args.func(args)
+    except provenance.ProvenanceError as exc:
+        return provenance.cli_error(exc)
 
 
 if __name__ == "__main__":

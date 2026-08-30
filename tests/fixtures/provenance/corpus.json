@@ -1,0 +1,26 @@
+{
+  "schema_version": "proof-pr.provenance-corpus.v1",
+  "profile": "proof-pr.c2pa.v1",
+  "native_sdk_cases": [
+    {"id": "embedded-valid-unknown-trust", "expected": {"bound": "yes", "valid": "yes", "trusted": "unknown", "truthful": "unknown"}},
+    {"id": "detached-valid", "expected": {"bound": "yes", "valid": "yes"}},
+    {"id": "tampered-asset", "expected": {"bound": "no", "valid": "no"}},
+    {"id": "byte-copy", "expected": {"bound": "yes", "valid": "yes"}},
+    {"id": "export-without-manifest", "expected": {"signed": "no", "valid": "no"}},
+    {"id": "missing-ingredient", "expected_error": "missing-ingredient"},
+    {"id": "unsupported-format", "expected_error": "unsupported-format"},
+    {"id": "oversize-manifest", "expected_error": "parser limit"},
+    {"id": "malicious-manifest", "expected_error": "failed safely"},
+    {"id": "jpeg-embedded-valid", "expected": {"bound": "yes", "valid": "yes", "trusted": "unknown", "truthful": "unknown"}},
+    {"id": "jpeg-detached-valid", "expected": {"bound": "yes", "valid": "yes"}},
+    {"id": "jpeg-tampered-asset", "expected": {"bound": "no", "valid": "no"}},
+    {"id": "jpeg-byte-copy", "expected": {"bound": "yes", "valid": "yes"}},
+    {"id": "jpeg-export-without-manifest", "expected": {"signed": "no", "valid": "no"}}
+  ],
+  "projection_only_cases": [
+    {"id": "redacted-assertion", "reason": "No private assertion is emitted by the fixture profile; redaction is represented as an omitted optional assertion."},
+    {"id": "invalid-time", "reason": "The profile emits no user-controlled timestamps; SDK-generated validation time remains untrusted."},
+    {"id": "revoked-trust", "reason": "No external revocation infrastructure is contacted in the offline fixture profile."},
+    {"id": "unknown-assertion", "reason": "Inspector surfaces unknown labels without treating them as validation success."}
+  ]
+}
