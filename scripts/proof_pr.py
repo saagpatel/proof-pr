@@ -4,13 +4,14 @@
 from __future__ import annotations
 
 import sys
+from importlib import import_module
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 
 def main() -> int:
-    from proof_pr.cli import main as cli_main
+    cli_main = import_module("proof_pr.cli").main
 
     return cli_main()
 
