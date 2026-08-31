@@ -71,7 +71,7 @@ def run(*args: str, expect: int = 0) -> subprocess.CompletedProcess[str]:
 
 
 def project_adversarial_states() -> None:
-    from proof_pr.provenance import _report, validate_report
+    import proof_pr.provenance as provenance
 
     base_manifest = {
         "title": "fixture.png",
@@ -90,7 +90,7 @@ def project_adversarial_states() -> None:
             "validation_results": {"activeManifest": {"failure": failures, "success": []}},
         }
 
-    invalid_time = _report(
+    invalid_time = provenance._report(
         raw(
             "Invalid",
             [{"code": "claimSignature.outsideValidity", "explanation": "outside validity"}],
@@ -101,7 +101,7 @@ def project_adversarial_states() -> None:
     assert invalid_time["states"]["well_formed"] == "yes"
     assert invalid_time["states"]["valid"] == "no"
     assert invalid_time["states"]["trusted"] == "no"
-    revoked = _report(
+    revoked = provenance._report(
         raw(
             "Invalid",
             [{"code": "signingCredential.revoked", "explanation": "certificate revoked"}],
@@ -118,7 +118,7 @@ def project_adversarial_states() -> None:
         "embedded_prompts": "unknown",
         "embedded_location": "unknown",
     }
-    assert not validate_report(revoked)
+    assert not provenance.validate_report(revoked)
 
     ingredient_failure = {
         "active_manifest": "urn:c2pa:test",
@@ -143,7 +143,7 @@ def project_adversarial_states() -> None:
             },
         },
     }
-    scoped = _report(
+    scoped = provenance._report(
         ingredient_failure, {"specVersion": "2.3.0"}, "synthetic-projection"
     )
     assert scoped["states"]["bound"] == "yes"
@@ -179,7 +179,7 @@ def project_adversarial_states() -> None:
             },
         },
     }
-    failed = _report(
+    failed = provenance._report(
         active_failure, {"specVersion": "2.3.0"}, "synthetic-projection"
     )
     assert failed["states"]["bound"] == "no"
