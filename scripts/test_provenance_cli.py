@@ -112,7 +112,116 @@ def project_adversarial_states() -> None:
     assert revoked["states"]["trusted"] == "no"
     assert revoked["states"]["truthful"] == "unknown"
     assert revoked["unknown_fields"]["assertion_labels"] == ["example.unknown.private"]
+    assert revoked["privacy"] == {
+        "remote_manifest_fetch": False,
+        "embedded_paths": "unknown",
+        "embedded_prompts": "unknown",
+        "embedded_location": "unknown",
+    }
     assert not validate_report(revoked)
+
+    ingredient_failure = {
+        "active_manifest": "urn:c2pa:test",
+        "manifests": {"urn:c2pa:test": base_manifest},
+        "validation_state": "Valid",
+        "validation_results": {
+            "activeManifest": {
+                "failure": [],
+                "success": [
+                    {"code": "claimSignature.validated", "explanation": "valid"},
+                    {"code": "assertion.dataHash.match", "explanation": "bound"},
+                ],
+            },
+            "ingredient:urn:c2pa:parent": {
+                "failure": [
+                    {
+                        "code": "assertion.dataHash.mismatch",
+                        "explanation": "ingredient mismatch",
+                    }
+                ],
+                "success": [],
+            },
+        },
+    }
+    scoped = _report(
+        ingredient_failure, {"specVersion": "2.3.0"}, "synthetic-projection"
+    )
+    assert scoped["states"]["bound"] == "yes"
+    assert scoped["states"]["signature_valid"] == "yes"
+    assert {entry["code"] for entry in scoped["validation"]} == {
+        "claimSignature.validated",
+        "assertion.dataHash.match",
+    }
+
+    active_failure = {
+        **ingredient_failure,
+        "validation_state": "Invalid",
+        "validation_results": {
+            "activeManifest": {
+                "failure": [
+                    {
+                        "code": "assertion.dataHash.mismatch",
+                        "explanation": "active mismatch",
+                    },
+                    {
+                        "code": "claimSignature.mismatch",
+                        "explanation": "active signature mismatch",
+                    },
+                ],
+                "success": [],
+            },
+            "ingredient:urn:c2pa:parent": {
+                "failure": [],
+                "success": [
+                    {"code": "claimSignature.validated", "explanation": "valid"},
+                    {"code": "assertion.dataHash.match", "explanation": "bound"},
+                ],
+            },
+        },
+    }
+    failed = _report(
+        active_failure, {"specVersion": "2.3.0"}, "synthetic-projection"
+    )
+    assert failed["states"]["bound"] == "no"
+    assert failed["states"]["signature_valid"] == "no"
+    assert {entry["code"] for entry in failed["validation"]} == {
+        "assertion.dataHash.mismatch",
+        "claimSignature.mismatch",
+    }
+
+
+def project_created_output_limits(tmp: Path) -> None:
+    import proof_pr.provenance as provenance
+
+    original_asset_limit = provenance.MAX_ASSET_BYTES
+    original_manifest_limit = provenance.MAX_MANIFEST_BYTES
+    try:
+        provenance.MAX_ASSET_BYTES = 4
+        provenance.MAX_MANIFEST_BYTES = 3
+        asset_output = tmp / "oversized-created.png"
+        try:
+            provenance._write_created_outputs(asset_output, b"12345", None, b"")
+        except provenance.ProvenanceError as exc:
+            assert "created asset exceeds" in str(exc)
+        else:
+            raise AssertionError("oversized created asset was accepted")
+        assert not asset_output.exists()
+
+        detached_output = tmp / "oversized-detached.png"
+        detached_manifest = tmp / "oversized-detached.c2pa"
+        try:
+            provenance._write_created_outputs(
+                detached_output, b"1234", detached_manifest, b"1234"
+            )
+        except provenance.ProvenanceError as exc:
+            assert "created manifest exceeds" in str(exc)
+        else:
+            raise AssertionError("oversized created manifest was accepted")
+        assert not detached_output.exists()
+        assert not detached_manifest.exists()
+    finally:
+        provenance.MAX_ASSET_BYTES = original_asset_limit
+        provenance.MAX_MANIFEST_BYTES = original_manifest_limit
 
 
 def main() -> int:
@@ -201,7 +310,12 @@ def main() -> int:
         assert embedded_data["c2pa"]["spec_version"] is None
         assert embedded_data["c2pa"]["claim_version"] == 2
         assert embedded_data["origin"]["receipt_projection"]["receipt_id"] == "fixture-receipt"
-        assert embedded_data["privacy"]["remote_manifest_fetch"] is False
+        assert embedded_data["privacy"] == {
+            "remote_manifest_fetch": False,
+            "embedded_paths": False,
+            "embedded_prompts": False,
+            "embedded_location": False,
+        }
         assert str(tmp) not in embedded.read_bytes().decode("latin-1", errors="ignore")
         collision = run(
             "provenance", "create",
@@ -250,6 +364,27 @@ def main() -> int:
             "provenance", "validate-report", str(nested_invalid_report), expect=2
         )
         assert "c2pa must contain exactly" in nested_invalid_result.stderr
+
+        invalid_origin_title = tmp / "invalid-origin-title.json"
+        invalid_origin_title_value = json.loads(embedded_report.read_text())
+        invalid_origin_title_value["origin"]["title"] = 7
+        invalid_origin_title.write_text(json.dumps(invalid_origin_title_value))
+        invalid_origin_title_result = run(
+            "provenance", "validate-report", str(invalid_origin_title), expect=2
+        )
+        assert "origin.title must be a string or null" in invalid_origin_title_result.stderr
+
+        invalid_origin_projection = tmp / "invalid-origin-projection.json"
+        invalid_origin_projection_value = json.loads(embedded_report.read_text())
+        invalid_origin_projection_value["origin"]["receipt_projection"] = "not-an-object"
+        invalid_origin_projection.write_text(json.dumps(invalid_origin_projection_value))
+        invalid_origin_projection_result = run(
+            "provenance", "validate-report", str(invalid_origin_projection), expect=2
+        )
+        assert (
+            "origin.receipt_projection must be an object or null"
+            in invalid_origin_projection_result.stderr
+        )
         covered.add("embedded-valid-unknown-trust")
 
         copied = tmp / "copied.png"
@@ -430,6 +565,7 @@ def main() -> int:
         covered.add("jpeg-export-without-manifest")
 
         project_adversarial_states()
+        project_created_output_limits(tmp)
         covered.update({"redacted-assertion", "invalid-time", "revoked-trust", "unknown-assertion"})
 
         assert covered == expected_ids, (covered, expected_ids)

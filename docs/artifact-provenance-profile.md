@@ -113,6 +113,12 @@ Output, sidecar, report, and tamper destinations fail closed when a path already
 exists. `--force` is an explicit opt-in to replace only the exact named output;
 source and output paths must remain distinct.
 
+Privacy flags describe what this profile can establish about the C2PA manifest,
+not a deep scan of arbitrary third-party assertions or source-file metadata.
+Profile-created manifests report the three embedded private-data flags as
+`false`; other manifests and manifest-free artifacts report them as `unknown`.
+Remote manifest fetch remains `false` because the local inspector disables it.
+
 ## Frozen corpus and failure behavior
 
 `tests/fixtures/provenance/corpus.json` separates native SDK cases from
@@ -120,7 +126,9 @@ projection-only cases. Native cases cover PNG and JPEG embedded, detached,
 tampered, byte-copied, and manifest-free export behavior plus missing receipt
 artifact, unsupported format, oversized manifest, and malformed manifest.
 Parser limits are 64 MiB per asset, 8 MiB per sidecar, and 2 MiB per derived
-report.
+report. Creation checks the final serialized asset and detached sidecar before
+writing either path, so it cannot emit an artifact that this profile refuses to
+read because of its own byte limits.
 
 Invalid-time, revoked trust, redacted/private assertion, and unknown-assertion
 branches use deterministic reader-JSON projection tests. They are not presented

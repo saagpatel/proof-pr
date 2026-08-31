@@ -345,10 +345,9 @@ def create(args: argparse.Namespace) -> int:
         raise
     except Exception as exc:
         raise ProvenanceError(f"C2PA creation failed safely: {exc}") from exc
-    output.write_bytes(dest.getvalue())
-    if args.detached:
-        manifest_output = Path(args.manifest_output)
-        manifest_output.write_bytes(manifest_bytes)
+    output_bytes = dest.getvalue()
+    manifest_output = Path(args.manifest_output) if args.detached else None
+    _write_created_outputs(output, output_bytes, manifest_output, manifest_bytes)
     print(
         json.dumps(
             {
@@ -366,11 +365,39 @@ def create(args: argparse.Namespace) -> int:
     return 0
 
 
+def _write_created_outputs(
+    output: Path,
+    output_bytes: bytes,
+    manifest_output: Path | None,
+    manifest_bytes: bytes | None,
+) -> None:
+    if len(output_bytes) > MAX_ASSET_BYTES:
+        raise ProvenanceError(
+            f"created asset exceeds the {MAX_ASSET_BYTES}-byte parser limit; "
+            "no output was written"
+        )
+    if manifest_output is not None:
+        if manifest_bytes is None:
+            raise ProvenanceError("detached creation did not produce a manifest")
+        if len(manifest_bytes) > MAX_MANIFEST_BYTES:
+            raise ProvenanceError(
+                f"created manifest exceeds the {MAX_MANIFEST_BYTES}-byte parser limit; "
+                "no output was written"
+            )
+    output.write_bytes(output_bytes)
+    if manifest_output is not None and manifest_bytes is not None:
+        manifest_output.write_bytes(manifest_bytes)
+
+
 def _validation_entries(raw: dict[str, Any]) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
-    for group in raw.get("validation_results", {}).values():
-        if not isinstance(group, dict):
-            continue
+    validation_results = raw.get("validation_results", {})
+    group = (
+        validation_results.get("activeManifest")
+        if isinstance(validation_results, dict)
+        else None
+    )
+    if isinstance(group, dict):
         for severity in ("failure", "informational", "success"):
             for entry in group.get(severity, []) or []:
                 if isinstance(entry, dict):
@@ -442,6 +469,15 @@ def _report(raw: dict[str, Any], crjson: dict[str, Any] | None, form: str) -> di
         "truthful": "unknown",
     }
     generator = manifest.get("claim_generator_info", []) if isinstance(manifest, dict) else []
+    profile_created = (
+        isinstance(receipt_projection, dict)
+        and receipt_projection.get("profile") == PROFILE
+        and any(
+            isinstance(item, dict) and item.get("name") == "proof-pr"
+            for item in generator
+        )
+    )
+    embedded_private_state: bool | str = False if profile_created else "unknown"
     return {
         "schema_version": REPORT_SCHEMA,
         "profile": PROFILE,
@@ -478,9 +514,9 @@ def _report(raw: dict[str, Any], crjson: dict[str, Any] | None, form: str) -> di
         "failure_explanations": failures,
         "privacy": {
             "remote_manifest_fetch": False,
-            "embedded_paths": False,
-            "embedded_prompts": False,
-            "embedded_location": False,
+            "embedded_paths": embedded_private_state,
+            "embedded_prompts": embedded_private_state,
+            "embedded_location": embedded_private_state,
         },
         "claim_boundary": (
             "Integrity and validation state do not establish that the underlying claim is true."
@@ -561,7 +597,19 @@ def validate_report(report: dict[str, Any]) -> list[str]:
         ):
             errors.append("c2pa.active_manifest must be a string or null")
 
-    exact_object("origin", {"title", "instance_id", "receipt_projection"})
+    origin_value = exact_object(
+        "origin", {"title", "instance_id", "receipt_projection"}
+    )
+    if origin_value is not None:
+        for key in ("title", "instance_id"):
+            if origin_value.get(key) is not None and not isinstance(
+                origin_value.get(key), str
+            ):
+                errors.append(f"origin.{key} must be a string or null")
+        if origin_value.get("receipt_projection") is not None and not isinstance(
+            origin_value.get("receipt_projection"), dict
+        ):
+            errors.append("origin.receipt_projection must be an object or null")
     binding_value = exact_object("binding", {"status", "method"})
     if binding_value is not None:
         if binding_value.get("status") not in {"yes", "no", "unknown"}:
@@ -587,9 +635,12 @@ def validate_report(report: dict[str, Any]) -> list[str]:
         },
     )
     if privacy_value is not None:
-        for key, value in privacy_value.items():
-            if value is not False:
-                errors.append(f"privacy.{key} must be false")
+        if privacy_value.get("remote_manifest_fetch") is not False:
+            errors.append("privacy.remote_manifest_fetch must be false")
+        for key in ("embedded_paths", "embedded_prompts", "embedded_location"):
+            value = privacy_value.get(key)
+            if value is not False and value != "unknown":
+                errors.append(f"privacy.{key} must be false or unknown")
 
     for key in ("generator", "edits", "ingredients", "validation", "failure_explanations"):
         value = report.get(key)
@@ -673,9 +724,9 @@ def inspect_asset(args: argparse.Namespace, *, verify_exit: bool = False) -> int
             ],
             "privacy": {
                 "remote_manifest_fetch": False,
-                "embedded_paths": False,
-                "embedded_prompts": False,
-                "embedded_location": False,
+                "embedded_paths": "unknown",
+                "embedded_prompts": "unknown",
+                "embedded_location": "unknown",
             },
             "claim_boundary": (
                 "Integrity and validation state do not establish that the underlying claim is true."

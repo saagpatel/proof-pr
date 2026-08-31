@@ -75,9 +75,9 @@
       "required": ["remote_manifest_fetch", "embedded_paths", "embedded_prompts", "embedded_location"],
       "properties": {
         "remote_manifest_fetch": {"const": false},
-        "embedded_paths": {"const": false},
-        "embedded_prompts": {"const": false},
-        "embedded_location": {"const": false}
+        "embedded_paths": {"enum": [false, "unknown"]},
+        "embedded_prompts": {"enum": [false, "unknown"]},
+        "embedded_location": {"enum": [false, "unknown"]}
       }
     },
     "claim_boundary": {"type": "string"}

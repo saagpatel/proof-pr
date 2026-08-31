@@ -27,9 +27,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from . import __version__
-from . import public_git_metadata
-from . import provenance
+import proof_pr.provenance as provenance
+import proof_pr.public_git_metadata as public_git_metadata
+
+from ._version import __version__
 from .validate_receipts import validate_receipt
 
 STATUSES = {
