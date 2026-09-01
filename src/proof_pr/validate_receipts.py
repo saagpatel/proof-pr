@@ -39,7 +39,16 @@ EVIDENCE_KINDS = {
     "attestation",
     "release",
     "manual-review",
+    "operating-decision",
 }
+OPERATING_DECISIONS = {
+    "PROCEED",
+    "PROCEED_SANCTIONED",
+    "REFUSE",
+    "ESCALATE",
+    "REROUTE",
+}
+SHA256_HEX_LENGTH = 64
 ARTIFACT_KINDS = {
     "log",
     "screenshot",
@@ -89,7 +98,12 @@ ALLOWED_EVIDENCE = REQUIRED_EVIDENCE | {
     "artifact_ids",
     "freshness_hours",
     "reason",
+    "operating_decision",
 }
+REQUIRED_OPERATING_DECISION = {"decision", "rationale", "operator_contract"}
+ALLOWED_OPERATING_DECISION = REQUIRED_OPERATING_DECISION | {"subject", "operant"}
+REQUIRED_OPERATOR_CONTRACT = {"id", "sha256"}
+REQUIRED_OPERANT = {"case_id", "corpus_id", "corpus_sha256"}
 ALLOWED_POSTURE = REQUIRED_POSTURE | {"artifact_ids", "reason"}
 ALLOWED_ROLLBACK = {"status", "path", "notes"}
 ALLOWED_ARTIFACT = REQUIRED_ARTIFACT | {"sha256", "external"}
@@ -124,6 +138,84 @@ def _closed(name: str, obj: Any, allowed: set[str], errors: list[str]) -> None:
 def _non_empty_string(name: str, value: Any, errors: list[str]) -> None:
     if not isinstance(value, str) or not value:
         errors.append(f"{name} must be a non-empty string")
+
+
+def _sha256_hex(name: str, value: Any, errors: list[str]) -> None:
+    if (
+        not isinstance(value, str)
+        or len(value) != SHA256_HEX_LENGTH
+        or any(char not in "0123456789abcdef" for char in value)
+    ):
+        errors.append(f"{name} must be a 64-character lowercase hex SHA-256")
+
+
+def _validate_operating_decision_item(
+    name: str, item: dict[str, Any], errors: list[str]
+) -> None:
+    payload = item.get("operating_decision")
+    if item.get("kind") != "operating-decision":
+        if payload is not None:
+            errors.append(f"{name} operating_decision is only valid for kind operating-decision")
+        return
+    if payload is None:
+        errors.append(f"{name} missing fields: operating_decision")
+        return
+    _missing(f"{name}.operating_decision", payload, REQUIRED_OPERATING_DECISION, errors)
+    _closed(f"{name}.operating_decision", payload, ALLOWED_OPERATING_DECISION, errors)
+    if not isinstance(payload, dict):
+        return
+    decision = payload.get("decision")
+    if decision not in OPERATING_DECISIONS:
+        errors.append(f"{name}.operating_decision.decision has invalid value: {decision}")
+    _non_empty_string(f"{name}.operating_decision.rationale", payload.get("rationale"), errors)
+    subject = payload.get("subject")
+    if subject is not None:
+        _non_empty_string(f"{name}.operating_decision.subject", subject, errors)
+    contract = payload.get("operator_contract")
+    _missing(
+        f"{name}.operating_decision.operator_contract",
+        contract,
+        REQUIRED_OPERATOR_CONTRACT,
+        errors,
+    )
+    _closed(
+        f"{name}.operating_decision.operator_contract",
+        contract,
+        REQUIRED_OPERATOR_CONTRACT,
+        errors,
+    )
+    if isinstance(contract, dict):
+        _non_empty_string(
+            f"{name}.operating_decision.operator_contract.id",
+            contract.get("id"),
+            errors,
+        )
+        _sha256_hex(
+            f"{name}.operating_decision.operator_contract.sha256",
+            contract.get("sha256"),
+            errors,
+        )
+    operant = payload.get("operant")
+    if operant is None:
+        return
+    _missing(f"{name}.operating_decision.operant", operant, REQUIRED_OPERANT, errors)
+    _closed(f"{name}.operating_decision.operant", operant, REQUIRED_OPERANT, errors)
+    if isinstance(operant, dict):
+        _non_empty_string(
+            f"{name}.operating_decision.operant.case_id",
+            operant.get("case_id"),
+            errors,
+        )
+        _non_empty_string(
+            f"{name}.operating_decision.operant.corpus_id",
+            operant.get("corpus_id"),
+            errors,
+        )
+        _sha256_hex(
+            f"{name}.operating_decision.operant.corpus_sha256",
+            operant.get("corpus_sha256"),
+            errors,
+        )
 
 
 def _string_list(name: str, value: Any, errors: list[str], *, allow_empty: bool) -> None:
@@ -342,6 +434,7 @@ def validate_receipt(path: Path) -> list[str]:
             reason = item.get("reason")
             if reason is not None and not isinstance(reason, str):
                 errors.append(f"evidence[{index}].reason must be a string")
+            _validate_operating_decision_item(f"evidence[{index}]", item, errors)
 
     security = receipt.get("security")
     _missing("security", security, {"secrets_scan", "permission_diff", "redaction"}, errors)

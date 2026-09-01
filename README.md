@@ -24,6 +24,8 @@ teams later, but v0 optimizes for fast human review of agent-created changes.
 - `schemas/proof-pr.artifact-provenance-report.v1.schema.json` - schema for the
   derived, non-authoritative inspector report.
 - `examples/` - compact historical receipts from real PRs.
+- `examples/pr-101-agent-operating-decision.json` - T3 agent PR with optional
+  OPERANT-style `operating-decision` evidence.
 - `examples/proof-pr-self-template.config.example.json` - config template for
   using proof-pr to document its own PRs.
 - `src/proof_pr/` - dependency-free CLI and receipt validator package.
@@ -172,8 +174,8 @@ evidence rather than supply-chain provenance.
 
 Use `receipt-hygiene` as a read-only pre-review nudge. It inspects an existing
 receipt and suggests missing standard evidence for the risk tier, starting with
-public git metadata, secrets posture, workflow permission posture, and rollback
-specificity. Add `--explain` to include copyable commands and compact receipt
+public git metadata, secrets posture, workflow permission posture, rollback
+specificity, and operating-decision evidence on agent T2+ receipts. Add `--explain` to include copyable commands and compact receipt
 patch examples for missing evidence. Add `--check <id>` to focus on one finding
 and `--fix-only` to print just the remediation command/patch block. Add
 `--strict` when a repo wants hygiene warnings to fail CI.

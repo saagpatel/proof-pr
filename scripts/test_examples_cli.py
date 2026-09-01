@@ -70,8 +70,8 @@ def main(argv: list[str] | None = None) -> int:
     except json.JSONDecodeError:
         _fail("examples json output was not valid JSON", json_result)
     examples = payload.get("examples")
-    if not isinstance(examples, list) or len(examples) != 5:
-        _fail("examples json output did not contain five examples", json_result)
+    if not isinstance(examples, list) or len(examples) != 6:
+        _fail("examples json output did not contain six examples", json_result)
     if examples[0].get("pattern") != "Docs/license only":
         _fail("examples json output changed ordering unexpectedly", json_result)
     print("examples json output: passed")
@@ -86,8 +86,8 @@ def main(argv: list[str] | None = None) -> int:
     except json.JSONDecodeError:
         _fail("examples tier json output was not valid JSON", tier_result)
     tier_examples = tier_payload.get("examples")
-    if not isinstance(tier_examples, list) or len(tier_examples) != 2:
-        _fail("examples tier json output did not contain two T3 examples", tier_result)
+    if not isinstance(tier_examples, list) or len(tier_examples) != 3:
+        _fail("examples tier json output did not contain three T3 examples", tier_result)
     if {item.get("tier") for item in tier_examples} != {"T3"}:
         _fail("examples tier json output included a non-T3 example", tier_result)
     print("examples tier json output: passed")

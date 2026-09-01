@@ -144,6 +144,13 @@ artifact bundle.
 callers can name the rendered summary file in their artifact bundle without
 changing receipt JSON.
 
+Unreleased after `v0.2.14`: existing receipts stay valid. Agent PRs may attach
+optional `operating-decision` evidence with an OPERANT-style label, rationale, and
+operator-contract hash. `proof-pr validate` rejects unknown labels.
+`receipt-hygiene --strict` (and reusable workflow `receipt_hygiene_strict`) warns
+or fails when an agent T2+ receipt omits that kind. This slice does not call
+OPERANT or score OCS.
+
 Established public repos should start with `public_git_metadata_mode:
 introduced`, which checks only commits introduced by the workflow ref relative
 to the configured base. Full-history mode is appropriate once a repo's live

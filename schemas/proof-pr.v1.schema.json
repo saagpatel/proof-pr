@@ -202,7 +202,8 @@
             "permission-diff",
             "attestation",
             "release",
-            "manual-review"
+            "manual-review",
+            "operating-decision"
           ]
         },
         "command": {
@@ -217,7 +218,59 @@
           "items": { "type": "string", "minLength": 1 }
         },
         "freshness_hours": { "type": ["integer", "null"], "minimum": 0 },
-        "reason": { "type": "string" }
+        "reason": { "type": "string" },
+        "operating_decision": { "$ref": "#/$defs/operating_decision" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "kind": { "const": "operating-decision" } },
+            "required": ["kind"]
+          },
+          "then": { "required": ["operating_decision"] },
+          "else": {
+            "not": { "required": ["operating_decision"] }
+          }
+        }
+      ]
+    },
+    "operating_decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision", "rationale", "operator_contract"],
+      "properties": {
+        "decision": {
+          "enum": [
+            "PROCEED",
+            "PROCEED_SANCTIONED",
+            "REFUSE",
+            "ESCALATE",
+            "REROUTE"
+          ]
+        },
+        "rationale": { "type": "string", "minLength": 1 },
+        "subject": { "type": "string", "minLength": 1 },
+        "operator_contract": { "$ref": "#/$defs/operator_contract_ref" },
+        "operant": { "$ref": "#/$defs/operant_binding" }
+      }
+    },
+    "operator_contract_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "sha256"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "operant_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "corpus_id", "corpus_sha256"],
+      "properties": {
+        "case_id": { "type": "string", "minLength": 1 },
+        "corpus_id": { "type": "string", "minLength": 1 },
+        "corpus_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
       }
     },
     "posture": {

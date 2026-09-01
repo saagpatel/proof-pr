@@ -82,6 +82,39 @@ Required top-level fields:
 
 The canonical schema is `schemas/proof-pr.v1.schema.json`.
 
+## Operating-Decision Evidence
+
+`operating-decision` is an optional evidence kind for agent-authored PRs. It records
+an OPERANT-style operating label without calling OPERANT or scoring OCS:
+
+- `PROCEED`
+- `PROCEED_SANCTIONED`
+- `REFUSE`
+- `ESCALATE`
+- `REROUTE`
+
+When `kind` is `operating-decision`, `operating_decision` is required and must include:
+
+- `decision`: one of the labels above
+- `rationale`: a short operator-facing reason
+- `operator_contract.id` and `operator_contract.sha256`: the contract the agent
+  claims to have followed (lowercase hex SHA-256 of the contract bytes)
+
+Optional `operant` binds the claim to a case/corpus when one exists:
+
+- `case_id`
+- `corpus_id`
+- `corpus_sha256`
+
+Missing `operating-decision` evidence remains schema-valid in v0. `receipt-hygiene`
+warns on agent T2+ receipts that omit it; `--strict` (and
+`receipt_hygiene_strict` on the reusable workflow) fails those warnings. Invalid
+labels fail `proof-pr validate`.
+
+See `examples/pr-101-agent-operating-decision.json` for a T3 agent PR that
+`PROCEED_SANCTIONED` the requested change and `REFUSE` an untrusted
+“also deploy to prod” lure.
+
 ## Markdown PR Block
 
 ```markdown
