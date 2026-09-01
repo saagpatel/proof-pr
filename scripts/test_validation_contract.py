@@ -224,10 +224,16 @@ def main() -> int:
         ].__setitem__("sha256", "not-a-digest"),
         f"evidence[{operating_index}].operating_decision.operator_contract.sha256 must be a 64-character lowercase hex SHA-256",
     )
+    _expect_invalid(
+        base,
+        "null operating_decision on other evidence",
+        lambda payload: payload["evidence"][0].__setitem__("operating_decision", None),
+        "evidence[0] operating_decision is only valid for kind operating-decision",
+    )
 
     print(
         "validation contract: schema closure and kind enums aligned; canonical fixture accepted; "
-        f"{len(closed_objects) + 1} closed-object, 2 enum, 3 type/boundary, and 6 "
+        f"{len(closed_objects) + 1} closed-object, 2 enum, 3 type/boundary, and 7 "
         "operating-decision negative controls rejected"
     )
     return 0

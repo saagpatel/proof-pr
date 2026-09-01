@@ -154,8 +154,10 @@ def _validate_operating_decision_item(
 ) -> None:
     payload = item.get("operating_decision")
     if item.get("kind") != "operating-decision":
-        if payload is not None:
-            errors.append(f"{name} operating_decision is only valid for kind operating-decision")
+        if "operating_decision" in item:
+            errors.append(
+                f"{name} operating_decision is only valid for kind operating-decision"
+            )
         return
     if payload is None:
         errors.append(f"{name} missing fields: operating_decision")
@@ -385,7 +387,10 @@ def validate_receipt(path: Path) -> list[str]:
         evidence_ids = set()
         for index, item in enumerate(evidence):
             _missing(f"evidence[{index}]", item, REQUIRED_EVIDENCE, errors)
-            _closed(f"evidence[{index}]", item, ALLOWED_EVIDENCE, errors)
+            allowed_evidence = ALLOWED_EVIDENCE
+            if isinstance(item, dict) and item.get("kind") != "operating-decision":
+                allowed_evidence = ALLOWED_EVIDENCE - {"operating_decision"}
+            _closed(f"evidence[{index}]", item, allowed_evidence, errors)
             if not isinstance(item, dict):
                 continue
             evidence_id = item.get("id")
