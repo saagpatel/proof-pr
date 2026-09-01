@@ -70,6 +70,9 @@ def main() -> int:
         "change": schema["properties"]["change"],
         "change.diff_stats": schema["properties"]["change"]["properties"]["diff_stats"],
         "evidence[0]": schema["$defs"]["evidence_item"],
+        "operating_decision": schema["$defs"]["operating_decision"],
+        "operator_contract_ref": schema["$defs"]["operator_contract_ref"],
+        "operant_binding": schema["$defs"]["operant_binding"],
         "security": schema["properties"]["security"],
         "security.secrets_scan": schema["$defs"]["posture"],
         "rollback": schema["properties"]["rollback"],
@@ -164,10 +167,74 @@ def main() -> int:
         "change.diff_stats.files must be a non-negative integer",
     )
 
+    operating = json.loads(
+        (ROOT / "examples" / "pr-101-agent-operating-decision.json").read_text()
+    )
+    if _errors_for(operating):
+        raise AssertionError("operating-decision example must validate")
+    operating_index = next(
+        index
+        for index, item in enumerate(operating["evidence"])
+        if item.get("kind") == "operating-decision"
+    )
+
+    _expect_invalid(
+        operating,
+        "operating-decision label enum",
+        lambda payload: payload["evidence"][operating_index]["operating_decision"].__setitem__(
+            "decision", "MAYBE"
+        ),
+        f"evidence[{operating_index}].operating_decision.decision has invalid value",
+    )
+    _expect_invalid(
+        operating,
+        "operating-decision payload required",
+        lambda payload: payload["evidence"][operating_index].pop("operating_decision"),
+        f"evidence[{operating_index}] missing fields: operating_decision",
+    )
+    _expect_invalid(
+        operating,
+        "operating_decision",
+        lambda payload: payload["evidence"][operating_index]["operating_decision"].__setitem__(
+            "unexpected", True
+        ),
+        f"evidence[{operating_index}].operating_decision unexpected fields: unexpected",
+    )
+    _expect_invalid(
+        operating,
+        "operator_contract_ref",
+        lambda payload: payload["evidence"][operating_index]["operating_decision"][
+            "operator_contract"
+        ].__setitem__("unexpected", True),
+        f"evidence[{operating_index}].operating_decision.operator_contract unexpected fields: unexpected",
+    )
+    _expect_invalid(
+        operating,
+        "operant_binding",
+        lambda payload: payload["evidence"][operating_index]["operating_decision"][
+            "operant"
+        ].__setitem__("unexpected", True),
+        f"evidence[{operating_index}].operating_decision.operant unexpected fields: unexpected",
+    )
+    _expect_invalid(
+        operating,
+        "operator contract sha256",
+        lambda payload: payload["evidence"][operating_index]["operating_decision"][
+            "operator_contract"
+        ].__setitem__("sha256", "not-a-digest"),
+        f"evidence[{operating_index}].operating_decision.operator_contract.sha256 must be a 64-character lowercase hex SHA-256",
+    )
+    _expect_invalid(
+        base,
+        "null operating_decision on other evidence",
+        lambda payload: payload["evidence"][0].__setitem__("operating_decision", None),
+        "evidence[0] operating_decision is only valid for kind operating-decision",
+    )
+
     print(
         "validation contract: schema closure and kind enums aligned; canonical fixture accepted; "
-        f"{len(closed_objects) + 1} closed-object, 2 enum, and 3 type/boundary "
-        "negative controls rejected"
+        f"{len(closed_objects) + 1} closed-object, 2 enum, 3 type/boundary, and 7 "
+        "operating-decision negative controls rejected"
     )
     return 0
 

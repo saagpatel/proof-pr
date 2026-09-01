@@ -37,7 +37,9 @@ jobs:
       - name: Validate example receipts
         run: proof-pr validate examples/pr-*.json
       - name: Render sample proof summary
-        run: proof-pr render examples/pr-024-sample-dashboard-rollups.json >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          proof-pr render examples/pr-024-sample-dashboard-rollups.json >> "$GITHUB_STEP_SUMMARY"
+          proof-pr render examples/pr-101-agent-operating-decision.json >> "$GITHUB_STEP_SUMMARY"
 
   provenance-fixtures:
     runs-on: ubuntu-latest

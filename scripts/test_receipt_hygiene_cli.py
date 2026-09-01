@@ -189,6 +189,49 @@ def main(argv: list[str] | None = None) -> int:
         if "super-secret-value" in redacted_text.stdout:
             _fail("receipt hygiene text leaked a sensitive-looking assignment", redacted_text)
 
+    missing_operating = _run(
+        proof_pr,
+        "receipt-hygiene",
+        "examples/pr-024-sample-dashboard-rollups.json",
+        "--check",
+        "operating-decision",
+    )
+    _expect(
+        "T2 agent receipt missing operating-decision",
+        missing_operating,
+        returncode=0,
+        stdout_contains="operating-decision: missing",
+        stderr_empty=True,
+    )
+
+    missing_operating_strict = _run(
+        proof_pr,
+        "receipt-hygiene",
+        "examples/pr-024-sample-dashboard-rollups.json",
+        "--strict",
+    )
+    _expect(
+        "strict hygiene fails when operating-decision is missing",
+        missing_operating_strict,
+        returncode=1,
+        stdout_contains="operating-decision: missing",
+        stderr_empty=True,
+    )
+
+    present_operating = _run(
+        proof_pr,
+        "receipt-hygiene",
+        "examples/pr-101-agent-operating-decision.json",
+        "--check",
+        "operating-decision",
+    )
+    _expect(
+        "operating-decision example has no focused finding",
+        present_operating,
+        returncode=2,
+        stderr_contains="receipt hygiene: no finding for check operating-decision",
+    )
+
     return 0
 
 

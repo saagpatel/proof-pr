@@ -90,6 +90,7 @@ PUBLIC_RISK_TIER_LABELS = {
     "T3": "T3",
 }
 PUBLIC_HYGIENE_CHECK_LABELS = {
+    "operating-decision": "operating-decision",
     "permission-posture": "permission-posture",
     "public-git-metadata": "public-git-metadata",
     "receipt-hygiene": "receipt-hygiene",
@@ -114,6 +115,13 @@ PUBLIC_HYGIENE_STATUS_LABELS = {
     "unknown": "unknown",
 }
 PUBLIC_HYGIENE_DETAILS = {
+    "operating-decision": {
+        "message": "Agent T2+ receipts should carry operating-decision evidence.",
+        "suggestion": (
+            "Record OPERANT-style decisions bound to an operator-contract hash, "
+            "or mark the evidence not_applicable with a bounded reason."
+        ),
+    },
     "permission-posture": {
         "message": "Workflow permission posture needs review.",
         "suggestion": "Review workflow permissions and record the posture.",
@@ -135,6 +143,8 @@ PUBLIC_HYGIENE_DETAILS = {
         "suggestion": "Run the repo secrets scan or document a bounded limitation.",
     },
 }
+AGENT_PRODUCERS = {"codex", "claude-code"}
+HYGIENE_OPERATING_DECISION_STATUSES = PASSING_STATUSES | {"not_applicable"}
 WORKFLOW_SURFACES = {
     "ci",
     "github-actions",
@@ -189,6 +199,16 @@ EXAMPLE_PATTERNS: list[dict[str, str]] = [
         "copy_when": (
             "A PR changes persistence, migrations, health checks, contracts, "
             "or concurrent write behavior."
+        ),
+    },
+    {
+        "pattern": "Agent operating decision",
+        "example": "examples/pr-101-agent-operating-decision.json",
+        "tier": "T3",
+        "copy_when": (
+            "An agent-authored T2/T3 PR should record OPERANT-style "
+            "PROCEED/PROCEED_SANCTIONED/REFUSE/ESCALATE/REROUTE evidence, "
+            "including refusing untrusted production-deploy lures."
         ),
     },
 ]
@@ -1011,6 +1031,74 @@ def _receipt_hygiene_findings(receipt: dict[str, Any]) -> list[dict[str, Any]]:
             )
         )
 
+    producer_agent = None
+    producer = receipt.get("producer")
+    if isinstance(producer, dict):
+        producer_agent = producer.get("agent")
+    operating_items = [
+        item
+        for item in _evidence_items(receipt)
+        if item.get("kind") == "operating-decision"
+    ]
+    if tier_index >= 2 and producer_agent in AGENT_PRODUCERS:
+        if not operating_items:
+            findings.append(
+                _with_patch(
+                    _hygiene_finding(
+                        check="operating-decision",
+                        status="missing",
+                        severity="warning",
+                        message=(
+                            "Agent T2+ receipts should record an OPERANT-style "
+                            "operating decision bound to an operator-contract hash."
+                        ),
+                        suggestion=(
+                            "Add operating-decision evidence for the requested change "
+                            "and any untrusted lure, or mark it not_applicable."
+                        ),
+                    ),
+                    {
+                        "evidence": [
+                            {
+                                "id": "operating-decision-requested-change",
+                                "kind": "operating-decision",
+                                "status": "passed",
+                                "required": False,
+                                "summary": (
+                                    "PROCEED_SANCTIONED on the in-scope requested change."
+                                ),
+                                "operating_decision": {
+                                    "decision": "PROCEED_SANCTIONED",
+                                    "subject": "requested-change",
+                                    "rationale": (
+                                        "Replace with the short operator-channel rationale."
+                                    ),
+                                    "operator_contract": {
+                                        "id": "local-operator-contract-v0",
+                                        "sha256": "0" * 64,
+                                    },
+                                },
+                            }
+                        ]
+                    },
+                )
+            )
+        elif not any(
+            item.get("status") in HYGIENE_OPERATING_DECISION_STATUSES
+            for item in operating_items
+        ):
+            findings.append(
+                _hygiene_finding(
+                    check="operating-decision",
+                    status=str(operating_items[0].get("status", "unknown")),
+                    severity="warning",
+                    message="Operating-decision evidence exists but is not passing.",
+                    suggestion=(
+                        "Record a valid OPERANT decision label or make the limitation explicit."
+                    ),
+                )
+            )
+
     if not findings:
         findings.append(
             _hygiene_finding(
@@ -1190,6 +1278,27 @@ def _public_hygiene_patch(check: str, finding: dict[str, Any]) -> dict[str, Any]
                 "path": "Revert this PR, or disable the changed workflow/feature.",
             }
         }
+    if check == "operating-decision":
+        return {
+            "evidence": [
+                {
+                    "id": "operating-decision-requested-change",
+                    "kind": "operating-decision",
+                    "status": "passed",
+                    "required": False,
+                    "summary": "PROCEED_SANCTIONED on the in-scope requested change.",
+                    "operating_decision": {
+                        "decision": "PROCEED_SANCTIONED",
+                        "subject": "requested-change",
+                        "rationale": "Replace with the short operator-channel rationale.",
+                        "operator_contract": {
+                            "id": "local-operator-contract-v0",
+                            "sha256": "0" * 64,
+                        },
+                    },
+                }
+            ]
+        }
     return None
 
 
@@ -1226,6 +1335,14 @@ def _status_line(item: dict[str, Any], *, full_commands: bool = False) -> str:
     summary = item.get("summary", "")
     command = item.get("command")
     label = item.get("id", item.get("kind", "evidence"))
+    if item.get("kind") == "operating-decision":
+        payload = item.get("operating_decision")
+        decision = payload.get("decision") if isinstance(payload, dict) else None
+        subject = payload.get("subject") if isinstance(payload, dict) else None
+        if isinstance(decision, str) and decision:
+            if isinstance(subject, str) and subject:
+                return f"- {label}: `{status}` `{decision}` on `{subject}` ({summary})"
+            return f"- {label}: `{status}` `{decision}` ({summary})"
     if command:
         rendered_command = _render_command(command, full_commands=full_commands)
         return f"- {label}: `{rendered_command}` -> `{status}` ({summary})"

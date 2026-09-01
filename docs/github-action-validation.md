@@ -124,10 +124,14 @@ proof-pr receipt-hygiene proof-pr.json --explain --check public-git-metadata --f
 ```
 
 `receipt-hygiene` is read-only. It suggests missing standard evidence by risk
-tier. Use `--explain` locally when an author wants copyable commands and compact
-receipt patch examples. Use `--check <id>` with `--fix-only` when an author only
-wants the command or patch for one hygiene finding. `--strict` makes warnings
-fail for repos that want a soft gate after dogfooding.
+tier, including `operating-decision` on agent T2+ receipts. Use `--explain` locally
+when an author wants copyable commands and compact receipt patch examples. Use
+`--check <id>` with `--fix-only` when an author only wants the command or patch
+for one hygiene finding. `--strict` makes warnings fail for repos that want a
+soft gate after dogfooding, including missing or non-passing operating-decision
+evidence.
+
+The reusable workflow runs `receipt-hygiene` by default after validation and
 
 The reusable workflow runs `receipt-hygiene` by default after validation and
 writes the result to the job summary. It also appends a focused public git
