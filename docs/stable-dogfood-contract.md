@@ -26,6 +26,17 @@ SLSA provenance by existing in CI.
 
 ## Consumer Workflow Shape
 
+The CLI can scaffold the caller workflow without replacing local files:
+
+```bash
+proof-pr workflow-template
+```
+
+It emits a pinned, manual-dispatch starter. Use `--pull-request` after manual
+dogfooding succeeds; the generated PR trigger is path-filtered to the receipt,
+artifact glob, and workflow file. The generator does not create evidence or
+change enforcement mode.
+
 Use a released tag for both the reusable workflow and the installed CLI:
 
 ```yaml

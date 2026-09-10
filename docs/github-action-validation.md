@@ -24,6 +24,32 @@ dogfooding.
 `proof-pr` now ships a reusable workflow at
 `.github/workflows/proof-pr-receipt.yml`.
 
+To create a starter caller workflow from an installed proof-pr CLI, run this in
+the consumer repository:
+
+```bash
+proof-pr workflow-template
+```
+
+The generator defaults to a released `vX.Y.Z` ref, `workflow_dispatch`, advisory
+hygiene, and the standard `proof-pr.json` / `proof-pr-artifacts/**` paths. It
+refuses to overwrite an existing output path. Add `--pull-request` only after a
+manual run passes; that variant adds narrow paths for the receipt, artifact
+glob, and `.github/workflows/proof-pr.yml`.
+
+For example, a PR-triggered workflow with a nested receipt can be generated with:
+
+```bash
+proof-pr workflow-template \
+  --pull-request \
+  --receipt-path evidence/proof-pr.json \
+  --artifact-glob 'evidence/proof-pr-artifacts/**'
+```
+
+Review the generated file before committing it. The template is adoption
+scaffolding, not proof evidence: authors still need to generate and validate a
+receipt, and the default remains advisory rather than a merge gate.
+
 Consumer repos can call it after generating or committing a receipt:
 
 ```yaml
