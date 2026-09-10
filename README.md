@@ -38,6 +38,8 @@ teams later, but v0 optimizes for fast human review of agent-created changes.
   adoption, triggers, and enforcement modes.
 - `.github/workflows/proof-pr-receipt.yml` - reusable workflow that validates a
   receipt, uploads proof artifacts, and writes a job summary.
+- `proof-pr workflow-template` - non-overwriting generator for a pinned consumer
+  workflow, starting with manual dispatch and optional narrow PR triggers.
 - `.github/workflows/proof-pr-validate.yml` - self-check workflow that validates
   receipts and gates public git metadata for live history/tags.
 - `docs/dogfood-sample-dashboard.md` - first local dogfood run notes.
@@ -101,6 +103,8 @@ claim is true; the receipt author still owns honest evidence.
 ```bash
 python3 scripts/proof_pr.py init --cwd /path/to/repo --tier T2 --summary "Short PR summary" --output proof-pr.json
 python3 scripts/proof_pr.py init --cwd /path/to/repo --tier T3 --example "Workflow dogfood" --summary "Short PR summary" --output proof-pr.json
+python3 scripts/proof_pr.py workflow-template
+python3 scripts/proof_pr.py workflow-template --pull-request --receipt-path proof-pr.json
 python3 scripts/proof_pr.py collect proof-pr.json --cwd /path/to/repo --config examples/proof-pr.config.example.json --suggest-example
 python3 scripts/proof_pr.py run --receipt proof-pr.json --cwd /path/to/repo --id tests --kind test -- python3 -m pytest -q
 python3 scripts/proof_pr.py run-config proof-pr.json --cwd /path/to/repo --config examples/proof-pr.config.example.json --finalize
@@ -126,10 +130,13 @@ proof-pr provenance create --source fixture.png --output signed.png --receipt pr
 proof-pr provenance verify signed.png --output provenance-report.json
 ```
 
-The CLI is local-only in v0. It can draft receipt identity and diff stats, run
-configured commands into log artifacts, synthesize the final review decision,
-render the Markdown block, and validate examples. It does not update PR bodies,
-upload artifacts, or enforce merges yet.
+The receipt-authoring CLI runs locally: it can draft receipt identity and diff
+stats, run configured commands into log artifacts, synthesize the final review
+decision, render the Markdown block, and validate examples. The reusable GitHub
+workflow validates committed receipts, renders a check summary, and uploads
+artifacts. `workflow-template` creates that consumer workflow without
+overwriting an existing path; it does not create a receipt, update PR bodies, or
+enforce merges.
 
 `provenance` is a fixture-only optional extension. It leaves the closed
 `proof-pr.v1` receipt unchanged and embeds only a minimal reference to an
