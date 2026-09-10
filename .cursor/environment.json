@@ -1,4 +1,4 @@
 {
   "disableAllMcpServers": true,
-  "install": "python3 -m venv .venv && .venv/bin/python -m pip install . && .venv/bin/python scripts/test_validation_contract.py"
+  "install": "bash .cursor/cloud-build.sh"
 }
