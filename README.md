@@ -98,6 +98,46 @@ The validator is intentionally lightweight. It checks structure, required
 fields, enum values, and the tier/evidence basics. It does not decide whether a
 claim is true; the receipt author still owns honest evidence.
 
+## Contributor verification
+
+Run these commands from the repository root with Python 3.11 or later. The core
+CLI has no runtime dependencies; source wrappers work without installing the
+package. Start with a focused harness for the changed surface, for example
+`python3 scripts/test_validation_contract.py` for receipt/schema changes.
+
+The core fixture baseline mirrors
+[the self-check workflow](.github/workflows/proof-pr-validate.yml):
+
+```bash
+python3 scripts/test_receipt_hygiene_cli.py
+python3 scripts/test_examples_cli.py
+python3 scripts/test_example_pattern_cli.py
+python3 scripts/test_workflow_template_cli.py
+python3 scripts/test_validation_contract.py
+python3 scripts/proof_pr.py validate examples/pr-*.json
+python3 scripts/proof_pr.py render examples/pr-024-sample-dashboard-rollups.json
+```
+
+These checks use committed examples and temporary synthetic receipts/workflows;
+they do not require provider credentials, publish a PR, or run commands from your
+own receipt config. `run` and `run-config` execute configured commands and create
+logs, so they are not substitutes for this fixture baseline.
+
+For installation/packaging changes, use the virtual environment in
+[Install](#install), install with `python3 -m pip install .`, and run the CLI
+harnesses accepting `--proof-pr` with `--proof-pr proof-pr` to check the installed
+entry point. There is no dedicated lint, format, or static typecheck tool
+configured here. The fixture harnesses and the actual CI checks remain the
+baseline; do not substitute an unconfigured pytest command.
+
+Provenance changes additionally need the optional SDK and pinned c2patool fixture
+lanes described in [Install](#install) and
+[the provenance profile](docs/artifact-provenance-profile.md). Those dependencies
+and platform binaries are separate prerequisites, not evidence from a core CLI
+pass. If rendered receipt output or workflow summaries change, inspect the
+rendered sample Markdown and the corresponding PR/CI summary; there is no web
+application or mandatory browser check for a pure documentation change.
+
 ## CLI Usage
 
 ```bash
