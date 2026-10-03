@@ -28,7 +28,7 @@ dependency.
 | `artifacts[].id` | `artifact_id` in that assertion | Identifies the existing receipt artifact. |
 | `artifacts[].sha256` | Projection plus C2PA hard binding | A lowercase SHA-256 is required and checked before creation; the C2PA asset binding protects the resulting asset. Neither proves the claim true. |
 | `subject.head_sha` and status | `commit` object in the assertion | Descriptive task/commit context; it is not the C2PA instance ID or asset hash. |
-| `producer.tool` and version | claim generator and software agent | Describes the local generator. |
+| `producer.tool` and version | receipt assertion; claim generator and software agent use fixed name `proof-pr` and `producer.version` | Preserves the receipt producer separately from the local generator name. |
 | create/edit operation | `c2pa.actions.v2` | `created`, or `opened` followed by `edited` for a parent ingredient. |
 | previous asset | C2PA ingredient linked by `ingredientIds` | Carries the parent manifest and validation readback where supported. |
 | SDK validation results | derived JSON/terminal provenance report | Inspection evidence only; never written back as canonical claim truth. |
@@ -123,8 +123,8 @@ Remote manifest fetch remains `false` because the local inspector disables it.
 
 `tests/fixtures/provenance/corpus.json` separates native SDK cases from
 projection-only cases. Native cases cover PNG and JPEG embedded, detached,
-tampered, byte-copied, and manifest-free export behavior plus missing receipt
-artifact, unsupported format, oversized manifest, and malformed manifest.
+tampered, byte-copied, and manifest-free export behavior plus missing parent
+ingredient, unsupported format, oversized manifest, and malformed manifest.
 Parser limits are 64 MiB per asset, 8 MiB per sidecar, and 2 MiB per derived
 report. Creation checks the final serialized asset and detached sidecar before
 writing either path, so it cannot emit an artifact that this profile refuses to
