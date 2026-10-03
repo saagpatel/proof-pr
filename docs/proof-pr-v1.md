@@ -183,26 +183,26 @@ and the final rendered anchor when they differ.
 
 - Detect repo, branch, base/head refs, base/head SHAs, and PR number if `gh` can
   resolve one.
-- Create an in-memory receipt draft.
+- Write a receipt draft to `proof-pr.json` or the path selected by `--output`.
 - Attach a suggested `producer.example_pattern` from the selected risk tier, or
   use `--example` to attach a specific pattern from `proof-pr examples --json`.
 
 `proof-pr collect`
 
 - Gather changed files and diff stats.
-- Run configured or operator-supplied checks.
-- Attach artifact references.
+- Apply receipt metadata from `--config`; use `run` or `run-config` to execute
+  checks and attach log artifact references.
 - Use `--suggest-example` to refresh `producer.example_pattern` after config
   changes the risk tier or changed surfaces.
-- Mark missing categories as `skipped`, `blocked`, or `not_applicable` with a
-  reason instead of pretending they passed.
+- Preserve uncollected evidence; authors must mark missing categories as
+  `skipped`, `blocked`, or `not_applicable` with a reason.
 
 `proof-pr finalize`
 
 - Promote collected diff metadata to passed evidence without claiming semantic
   human review.
 - Set `overall.status` and `overall.review_decision` from required evidence,
-  security posture, rollback posture, and limitations.
+  security posture, and limitations.
 - Keep failed required evidence as `reject`, blocked required evidence as
   `revise`, and skipped/stale/partial required evidence as `partial`.
 - Allow explicit `ready_with_operator_awareness` when warnings or accepted
@@ -227,13 +227,13 @@ and the final rendered anchor when they differ.
 
 ## GitHub Action Follow-Up
 
-After local dogfooding, add an Action that:
+The reusable workflow at `.github/workflows/proof-pr-receipt.yml`:
 
 - validates `proof-pr.json`;
 - uploads receipt artifacts;
 - writes a Markdown job summary;
-- optionally comments on the PR or updates the proof block;
-- does not block merges until the format survives real use.
+- leaves PR comments and proof-block updates deferred;
+- leaves required-check enforcement to the consumer repository.
 
 Strict enforcement, GitHub App Checks integration, dashboards, and heavy
 provenance are intentionally deferred.

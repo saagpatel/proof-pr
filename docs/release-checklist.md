@@ -5,10 +5,11 @@ Use this checklist before tagging a `proof-pr` release.
 ## Preflight
 
 - Confirm `main` is clean and synced with `origin/main`.
-- Confirm `pyproject.toml` and `src/proof_pr/__init__.py` carry the intended
+- Confirm `pyproject.toml` and `src/proof_pr/_version.py` carry the intended
   version.
 - Confirm the `proof-pr` workflow is passing on `main`; it gates public git
-  metadata for the PR head or main workflow SHA plus version tags.
+  metadata for commits introduced by the PR, or the main workflow SHA plus
+  version tags on manual dispatch.
 - Review `PUBLICATION.md` for public-safety posture changes.
 
 ## Local Verification
@@ -36,7 +37,7 @@ dogfood notes, or publication docs change.
 ## GitHub Verification
 
 - Open a PR that carries a `proof-pr.v1` block.
-- Confirm the `validate-proof` workflow passes on the PR.
+- Confirm the `validate-proof` job in the `proof-pr` workflow passes on the PR.
 - Merge through the PR path.
 - Trigger `workflow_dispatch` on `main` and confirm it passes.
 

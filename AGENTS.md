@@ -3,7 +3,7 @@
 
 ## What This Project Is
 
-proof-pr: `proof-pr` is a small standard and future CLI for pull requests that carry their.
+proof-pr: `proof-pr` is a small standard and CLI for pull requests that carry their own proof bundle.
 
 ## Current State
 

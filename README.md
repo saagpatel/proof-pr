@@ -1,6 +1,6 @@
 # proof-pr
 
-`proof-pr` is a small standard and future CLI for pull requests that carry their
+`proof-pr` is a small standard and CLI for pull requests that carry their
 own proof bundle: risk tier, files touched, verification commands, screenshots,
 health checks, security posture, rollback notes, and a machine-readable receipt.
 
@@ -10,7 +10,7 @@ teams later, but v0 optimizes for fast human review of agent-created changes.
 
 ## Current Contents
 
-- `docs/proof-pr-v1.md` - v0 standard, Markdown block, risk tiers, CLI plan, and
+- `docs/proof-pr-v1.md` - v0 standard, Markdown block, risk tiers, CLI usage, and
   GitHub Action follow-up.
 - `docs/example-receipts.md` - example receipt patterns by risk tier and PR
   shape.

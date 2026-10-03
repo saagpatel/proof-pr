@@ -64,10 +64,10 @@ jobs:
     permissions:
       contents: read
       actions: read
-    uses: saagpatel/proof-pr/.github/workflows/proof-pr-receipt.yml@v0.2.7
+    uses: saagpatel/proof-pr/.github/workflows/proof-pr-receipt.yml@v0.2.14
     with:
       receipt_path: proof-pr.json
-      proof_pr_ref: v0.2.7
+      proof_pr_ref: v0.2.14
       artifact_name: proof-pr
       artifact_glob: proof-pr-artifacts/**
       proof_summary_filename: proof-pr-summary.md
@@ -219,9 +219,9 @@ jobs:
           if-no-files-found: warn
 ```
 
-For consuming repos that do not vendor `proof-pr`, replace the validation command
-with an install or checkout step for this project. Keep this explicit until the
-CLI has a packaged release.
+For consuming repos that do not vendor `proof-pr`, add an install step for this
+project and replace every `python3 scripts/proof_pr.py` invocation with
+`proof-pr`, or check out this project's source wrappers and package.
 
 ## What Stays Deferred
 
