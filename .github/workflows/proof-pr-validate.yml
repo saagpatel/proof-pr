@@ -1,17 +1,19 @@
 name: proof-pr
 
+permissions:
+  contents: read
+
 on:
   pull_request:
   workflow_dispatch:
 
 jobs:
   validate-proof:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
-      actions: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - name: Install proof-pr
@@ -44,11 +46,11 @@ jobs:
           proof-pr render examples/pr-101-agent-operating-decision.json >> "$GITHUB_STEP_SUMMARY"
 
   provenance-fixtures:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install optional provenance dependencies
         run: python3 -m pip install '.[provenance]'
       - name: Run fixture and adversarial provenance corpus
