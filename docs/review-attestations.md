@@ -36,6 +36,9 @@ review, which served model ran, or that the store is immutable or complete.
 Deleted or suppressed attestations are outside the proof. The CLI does not
 enforce storage locations: keep private keys and any overridden store outside
 every repository.
+The allowlist file and public key files must live outside the PR checkout.
+The allowlist path must never be derived from the PR's head tree: a PR that
+ships its own allowlist can approve itself.
 
 ## Keys and allowlist
 
@@ -81,7 +84,10 @@ path is read locally by the verifier:
 ```
 
 Treat the allowlist as a trust decision: a key is authorized for exactly one
-vendor. Relative `public_key_path` values are resolved from the allowlist
+vendor. Keep the allowlist file and public key files outside the PR checkout,
+and never derive the allowlist path from the PR's head tree; otherwise a PR
+can ship its own allowlist and approve itself.
+Relative `public_key_path` values are resolved from the allowlist
 file's directory. To rotate a key, add the new keyid and remove the old keyid
 from the allowlist. Retaining an old key keeps its attestations trusted.
 
