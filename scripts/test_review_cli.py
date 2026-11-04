@@ -34,7 +34,7 @@ def command(*args: str, expect: int | None = 0) -> subprocess.CompletedProcess[s
         env["PATH"] = str(GH_PREFIX) + os.pathsep + env.get("PATH", "")
     result = subprocess.run(
         [*PROOF_PR, *args], cwd=ROOT, env=env, text=True,
-        capture_output=True, check=False,
+        capture_output=True, check=False, timeout=30,
     )
     if expect is not None and result.returncode != expect:
         raise AssertionError(
@@ -144,6 +144,47 @@ def mutate_envelope(path: Path, mutate_payload: bool = False) -> None:
     path.write_text(json.dumps(envelope))
 
 
+def resign_statement(path: Path, key: dict[str, Any], statement: dict[str, Any],
+                     payload_type: str | None = None) -> None:
+    from checkseal import dsse
+    from checkseal.sign.local import load_private_signer
+
+    envelope = json.loads(path.read_text())
+    payload_bytes = json.dumps(statement, sort_keys=True, separators=(",", ":")).encode()
+    unsigned = dsse.Envelope(payload_bytes, payload_type or envelope["payloadType"], [])
+    signature = load_private_signer(str(key["private"])).sign(unsigned.signing_bytes())
+    signed = dsse.Envelope(payload_bytes, unsigned.payload_type, [signature])
+    path.write_text(json.dumps(signed.to_jsonable()))
+
+
+def read_statement(path: Path) -> dict[str, Any]:
+    return json.loads(base64.b64decode(json.loads(path.read_text())["payload"]))
+
+
+def assert_unexpected_error_report() -> None:
+    env = os.environ.copy()
+    if not USE_INSTALLED:
+        env["PYTHONPATH"] = str(ROOT / "src")
+    else:
+        env.pop("PYTHONPATH", None)
+    result = subprocess.run(
+        [sys.executable, "-c", """
+import argparse
+from unittest.mock import patch
+from proof_pr.review import verify_command
+args = argparse.Namespace(from_gh=False, repo="example/project", pr=17,
+                          head="b" * 40, base="a" * 40)
+with patch("proof_pr.review.verify_two_key", side_effect=RuntimeError("synthetic failure")):
+    raise SystemExit(verify_command(args))
+"""], cwd=ROOT, env=env, text=True, capture_output=True, check=False, timeout=30,
+    )
+    assert result.returncode == 2, result.stderr
+    data = json.loads(result.stdout)
+    assert_status(data, "UNKNOWN")
+    assert "synthetic failure" in data["detail"], data
+    assert not result.stderr, result.stderr
+
+
 def copy_into_expected_pr(store: Path, source: Path, filename: str) -> Path:
     target_dir = store / "example" / "project" / f"pr-{PR}" / HEAD
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -178,6 +219,7 @@ def main() -> int:
         return 1
 
     assert_core_without_extras()
+    assert_unexpected_error_report()
     temp_root = Path(os.environ.get("TMPDIR", ROOT / ".tmp"))
     temp_root.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="proof-pr-review-", dir=temp_root) as raw:
@@ -244,6 +286,41 @@ def main() -> int:
         attest(keys["openai"], store, run_id="o-run")
         assert_status(report(allow, store), "FAIL", "vendor_key_mismatch")
 
+        store, allow = new_case(root, "runner-mismatch", keys)
+        first = attest(keys["anthropic"], store, run_id="a-run")
+        attest(keys["openai"], store, run_id="o-run")
+        statement = read_statement(first)
+        statement["predicate"]["reviewer"]["runner"] = "different-runner"
+        resign_statement(first, keys["anthropic"], statement)
+        assert_status(report(allow, store), "FAIL", "vendor_key_mismatch")
+
+        for case in ("extra-predicate-key", "float-pr"):
+            store, allow = new_case(root, case, keys)
+            first = attest(keys["anthropic"], store, run_id="a-run")
+            attest(keys["openai"], store, run_id="o-run")
+            statement = read_statement(first)
+            if case == "extra-predicate-key":
+                statement["predicate"]["extra"] = "unexpected"
+            else:
+                statement["predicate"]["pr"] = 17.0
+            resign_statement(first, keys["anthropic"], statement)
+            assert_status(report(allow, store), "FAIL", "malformed")
+
+        store, allow = new_case(root, "two-signatures", keys)
+        first = attest(keys["anthropic"], store, run_id="a-run")
+        attest(keys["openai"], store, run_id="o-run")
+        envelope = json.loads(first.read_text())
+        envelope["signatures"].append(envelope["signatures"][0].copy())
+        first.write_text(json.dumps(envelope))
+        assert_status(report(allow, store), "FAIL", "malformed")
+
+        store, allow = new_case(root, "wrong-payload-type", keys)
+        first = attest(keys["anthropic"], store, run_id="a-run")
+        attest(keys["openai"], store, run_id="o-run")
+        resign_statement(first, keys["anthropic"], read_statement(first),
+                         payload_type="application/json")
+        assert_status(report(allow, store), "FAIL", "malformed")
+
         store, allow = new_case(root, "altered-predicate", keys)
         first = attest(keys["anthropic"], store, run_id="a-run")
         attest(keys["openai"], store, run_id="o-run")
@@ -299,6 +376,34 @@ def main() -> int:
         data = report(allow, store)
         assert_status(data, "FAIL", "malformed")
 
+        store, allow = new_case(root, "deeply-nested-envelope", keys)
+        first = attest(keys["anthropic"], store, run_id="a-run")
+        attest(keys["openai"], store, run_id="o-run")
+        first.write_text("[" * 200_000 + "0" + "]" * 200_000)
+        assert_status(report(allow, store), "FAIL", "malformed")
+
+        if hasattr(os, "mkfifo"):
+            store, allow = new_case(root, "fifo-envelope", keys)
+            first = attest(keys["anthropic"], store, run_id="a-run")
+            attest(keys["openai"], store, run_id="o-run")
+            first.unlink()
+            os.mkfifo(first)
+            data = report(allow, store)
+            assert_status(data, "FAIL", "malformed")
+            item = next(item for item in data["envelopes"] if item["path"] == str(first))
+            assert item["detail"] == "not a regular file", item
+
+        store, allow = new_case(root, "symlink-envelope", keys)
+        first = attest(keys["anthropic"], store, run_id="a-run")
+        attest(keys["openai"], store, run_id="o-run")
+        target = store.parent / "signed-envelope.json"
+        first.rename(target)
+        first.symlink_to(target)
+        data = report(allow, store)
+        assert_status(data, "FAIL", "malformed")
+        item = next(item for item in data["envelopes"] if item["path"] == str(first))
+        assert item["detail"] == "not a regular file", item
+
         store, allow = new_case(root, "unreadable-envelope", keys)
         attest(keys["anthropic"], store, run_id="a-run")
         attest(keys["openai"], store, run_id="o-run")
@@ -315,32 +420,34 @@ def main() -> int:
         attest(keys["openai"], store, run_id="o-run")
         assert_status(report(allow, store), "FAIL", "wrong_base")
 
-        store, allow = new_case(root, "wrong-repo-pr", keys)
+        store, allow = new_case(root, "wrong-repo", keys)
         wrong_repo = attest(keys["anthropic"], store, run_id="a-run", repo="example/other")
-        wrong_pr = attest(keys["openai"], store, run_id="o-run", pr=18)
+        attest(keys["openai"], store, run_id="o-run")
         copy_into_expected_pr(store, wrong_repo, "wrong-repo.dsse.json")
+        assert_status(report(allow, store), "FAIL", "wrong_repo_or_pr")
+
+        store, allow = new_case(root, "wrong-pr", keys)
+        attest(keys["anthropic"], store, run_id="a-run")
+        wrong_pr = attest(keys["openai"], store, run_id="o-run", pr=18)
         copy_into_expected_pr(store, wrong_pr, "wrong-pr.dsse.json")
         assert_status(report(allow, store), "FAIL", "wrong_repo_or_pr")
 
         store, allow = new_case(root, "subject-mismatch", keys)
         first = attest(keys["anthropic"], store, run_id="a-run")
         attest(keys["openai"], store, run_id="o-run")
-        envelope = json.loads(first.read_text())
-        payload = json.loads(base64.b64decode(envelope["payload"]))
-        payload["subject"][0]["digest"]["gitCommit"] = "c" * 40
-        payload_bytes = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
-        envelope["payload"] = base64.b64encode(payload_bytes).decode()
-        from checkseal import dsse
-        from checkseal.sign.local import load_private_signer
-        unsigned = dsse.Envelope(payload_bytes, envelope["payloadType"], [])
-        signature = load_private_signer(str(keys["anthropic"]["private"])).sign(
-            unsigned.signing_bytes()
-        )
-        envelope["signatures"] = [{
-            "sig": base64.b64encode(signature.sig).decode(), "keyid": signature.keyid,
-        }]
-        first.write_text(json.dumps(envelope))
-        assert_status(report(allow, store), "FAIL", "stale_head")
+        statement = read_statement(first)
+        statement["subject"][0]["digest"]["gitCommit"] = "c" * 40
+        resign_statement(first, keys["anthropic"], statement)
+        assert_status(report(allow, store), "FAIL", "malformed")
+
+        store, allow = new_case(root, "predicate-head-mismatch", keys)
+        first = attest(keys["anthropic"], store, run_id="a-run")
+        attest(keys["openai"], store, run_id="o-run")
+        statement = read_statement(first)
+        statement["predicate"]["head"] = "c" * 40
+        statement["predicate"]["scope"] = f'{BASE}..{"c" * 40}'
+        resign_statement(first, keys["anthropic"], statement)
+        assert_status(report(allow, store), "FAIL", "malformed")
 
         store, allow = new_case(root, "changes-requested", keys)
         attest(keys["anthropic"], store, run_id="a-run")

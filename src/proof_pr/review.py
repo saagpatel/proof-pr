@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import re
+import stat
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -193,6 +194,8 @@ def validate_statement(statement: Any) -> dict[str, Any]:
             not exact_keys(subjects[0]["digest"], {"gitCommit"})):
         raise ReviewError("invalid subject")
     commit_sha(subjects[0]["digest"]["gitCommit"])
+    if subjects[0]["digest"]["gitCommit"] != p["head"]:
+        raise ReviewError("subject digest must match the predicate head")
     if subjects[0]["name"] != f'git+https://github.com/{p["repo"]}@{p["head"]}':
         raise ReviewError("subject name must identify the predicate repo and head")
     return p
@@ -268,6 +271,9 @@ def verify_two_key(args: argparse.Namespace) -> int:
         item: dict[str, Any] = {"path": str(path), "status": "reject", "reason": "malformed"}
         report["envelopes"].append(item)
         try:
+            if not stat.S_ISREG(os.lstat(path).st_mode):
+                item["detail"] = "not a regular file"
+                continue
             envelope = dsse.Envelope.from_jsonable(json.loads(path.read_text()))
             # This profile has exactly one local signing key per review.
             if envelope.payload_type != PAYLOAD_TYPE or len(envelope.signatures) != 1:
@@ -306,7 +312,7 @@ def verify_two_key(args: argparse.Namespace) -> int:
         except OSError as exc:
             unreadable = True
             item["detail"] = f"unreadable envelope: {exc}"
-        except (ValueError, TypeError, KeyError, AttributeError, ReviewError,
+        except (ValueError, TypeError, KeyError, AttributeError, RecursionError, ReviewError,
                 argparse.ArgumentTypeError, signature_error) as exc:
             item["detail"] = str(exc)
     # Search all combinations: an early duplicate cannot hide a later valid pair.
@@ -378,4 +384,9 @@ def verify_command(args: argparse.Namespace) -> int:
     if (not args.from_gh and not args.base) or (args.from_gh and args.base):
         report = {"proves": PROVES, "envelopes": []}
         return report_result(report, "FAIL", "use --head with --base, or --from-gh alone")
-    return verify_two_key(args)
+    try:
+        return verify_two_key(args)
+    except Exception as exc:
+        report = {"proves": PROVES, "repo": args.repo, "pr": args.pr,
+                  "head": args.head, "base": args.base, "envelopes": []}
+        return report_result(report, "UNKNOWN", f"unexpected verification error: {exc}")
