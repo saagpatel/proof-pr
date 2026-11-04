@@ -142,6 +142,12 @@ entry point. There is no dedicated lint, format, or static typecheck tool
 configured here. The fixture harnesses and the actual CI checks remain the
 baseline; do not substitute an unconfigured pytest command.
 
+Review-attestation changes additionally need Python 3.12 or later and the
+optional signing extra: install with `python3 -m pip install '.[review]'`, then run
+`python3 scripts/test_review_cli.py --proof-pr proof-pr`. This mirrors the `review`
+lane in [the self-check workflow](.github/workflows/proof-pr-validate.yml); the core
+fixture baseline above does not exercise signing.
+
 Provenance changes additionally need the optional SDK and pinned c2patool fixture
 lanes described in [Install](#install) and
 [the provenance profile](docs/artifact-provenance-profile.md). Those dependencies
