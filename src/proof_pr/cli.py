@@ -29,6 +29,7 @@ from pathlib import Path
 from typing import Any
 
 import proof_pr.provenance as provenance
+import proof_pr.review as review
 import proof_pr.public_git_metadata as public_git_metadata
 
 from ._version import __version__
@@ -1972,6 +1973,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     public_git_metadata.add_parser(subparsers)
     provenance.add_parser(subparsers)
+    review.add_parser(subparsers)
 
     return parser
 

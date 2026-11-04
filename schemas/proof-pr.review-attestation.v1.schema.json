@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/saagpatel/proof-pr/review-attestation/v1",
+  "title": "proof-pr review attestation predicate v1",
+  "description": "Signed review metadata. Proves runner keys, not served models. Scope must equal base + '..' + head.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["repo", "pr", "base", "head", "scope", "reviewer", "run_id", "verdict", "findings", "created_at"],
+  "properties": {
+    "repo": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$"},
+    "pr": {"type": "integer", "minimum": 1},
+    "base": {"$ref": "#/$defs/commit"},
+    "head": {"$ref": "#/$defs/commit"},
+    "scope": {"type": "string", "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})\\.\\.([0-9a-f]{40}|[0-9a-f]{64})$"},
+    "reviewer": {
+      "type": "object", "additionalProperties": false,
+      "required": ["vendor", "tool", "runner"],
+      "properties": {
+        "vendor": {"enum": ["anthropic", "openai"]},
+        "tool": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "runner": {"$ref": "#/$defs/token"}
+      }
+    },
+    "run_id": {"$ref": "#/$defs/token"},
+    "verdict": {"enum": ["approve", "changes_requested", "comment"]},
+    "findings": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sha256", "bytes"],
+      "properties": {
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "bytes": {"type": "integer", "minimum": 0}
+      }
+    },
+    "created_at": {"type": "string", "format": "date-time", "pattern": "(Z|\\+00:00)$"}
+  },
+  "$defs": {
+    "commit": {"type": "string", "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})$"},
+    "token": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"}
+  }
+}
