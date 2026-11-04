@@ -68,3 +68,18 @@ jobs:
           echo "C2PATOOL=$RUNNER_TEMP/c2patool/c2patool/c2patool" >> "$GITHUB_ENV"
       - name: Run bidirectional c2patool interoperability corpus
         run: python3 scripts/test_c2patool_interop.py
+
+  review:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+      - name: Install optional review dependencies
+        run: python3 -m pip install '.[review]'
+      - name: Test signed review attestations
+        run: python3 scripts/test_review_cli.py --proof-pr proof-pr
