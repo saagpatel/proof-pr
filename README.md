@@ -21,6 +21,8 @@ teams later, but v0 optimizes for fast human review of agent-created changes.
   profile, trust vocabulary, format matrix, and migration path.
 - `docs/provenance-privacy-threat-model.md` - portable metadata and parser threat
   model.
+- `docs/review-attestations.md` - optional signed review attestations and
+  two-key verification.
 - `schemas/proof-pr.artifact-provenance-report.v1.schema.json` - schema for the
   derived, non-authoritative inspector report.
 - `examples/` - compact historical receipts from real PRs.
@@ -63,6 +65,16 @@ the frozen fixture corpus:
 python3 -m pip install -e '.[provenance]'
 python3 scripts/test_provenance_cli.py
 ```
+
+Signed review attestations are optional and require Python 3.12 or later:
+
+```bash
+python3 -m pip install '.[review]'
+python3 scripts/test_review_cli.py --proof-pr proof-pr
+```
+
+See [signed review attestations](docs/review-attestations.md) for the two-key
+walkthrough and threat model. Signatures prove runner keys, not served models.
 
 With the checksum-verified official `c2patool` 0.27.16 binary available, run
 the pinned PNG/JPEG embedded/detached bidirectional readback:

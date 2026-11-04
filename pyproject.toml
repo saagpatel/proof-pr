@@ -28,6 +28,7 @@ dependencies = []
 
 [project.optional-dependencies]
 provenance = ["c2pa-python==0.37.8"]
+review = ["checkseal[sign]>=0.1.1; python_version >= '3.12'"]
 
 [project.urls]
 Homepage = "https://github.com/saagpatel/proof-pr"
