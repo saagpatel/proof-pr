@@ -1,5 +1,8 @@
 name: proof-pr receipt
 
+permissions:
+  contents: read
+
 on:
   workflow_call:
     inputs:
@@ -118,12 +121,11 @@ on:
 
 jobs:
   validate-receipt:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
-      actions: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -229,6 +231,8 @@ jobs:
           mkdir -p "$RUNNER_TEMP/proof-pr-upload"
           cp "$RECEIPT_PATH" "$RUNNER_TEMP/proof-pr-upload/"
           shopt -s globstar nullglob
+          # Intentional pathname expansion for the configurable artifact glob.
+          # shellcheck disable=SC2206
           matches=( $ARTIFACT_GLOB )
           if [ "${#matches[@]}" -gt 0 ]; then
             mkdir -p "$RUNNER_TEMP/proof-pr-upload/artifacts"
@@ -236,7 +240,7 @@ jobs:
           fi
 
       - name: Upload proof bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ inputs.artifact_name }}
           path: ${{ runner.temp }}/proof-pr-upload
