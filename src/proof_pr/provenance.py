@@ -17,6 +17,8 @@ import zlib
 from pathlib import Path
 from typing import Any
 
+from .json_utils import loads_unique_json
+
 PROFILE = "proof-pr.c2pa.v1"
 REPORT_SCHEMA = "proof-pr.artifact-provenance-report.v1"
 MAX_ASSET_BYTES = 64 * 1024 * 1024
@@ -184,10 +186,10 @@ def _context() -> Any:
 
 def _receipt_projection(receipt_path: Path, artifact_id: str) -> tuple[dict[str, Any], str]:
     try:
-        receipt = json.loads(
+        receipt = loads_unique_json(
             _read_bounded(receipt_path, MAX_REPORT_BYTES, "proof-pr receipt")
         )
-    except json.JSONDecodeError as exc:
+    except ValueError as exc:
         raise ProvenanceError(f"proof-pr receipt is not valid JSON: {exc}") from exc
     if not isinstance(receipt, dict):
         raise ProvenanceError("proof-pr receipt root must be an object")

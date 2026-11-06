@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import copy
 import json
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -83,6 +84,18 @@ def main() -> int:
         raise AssertionError(
             f"duplicate schema_version was not rejected: {duplicate_errors!r}"
         )
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "receipt.json"
+        path.write_text(duplicated, encoding="utf-8")
+        rendered = subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "proof_pr.py"), "render", str(path)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert rendered.returncode == 2, rendered
+        assert "duplicate JSON object key: 'schema_version'" in rendered.stderr, rendered
+        assert not rendered.stdout, rendered
 
     schema_closed_objects = {
         "receipt": schema,

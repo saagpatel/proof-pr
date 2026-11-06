@@ -291,6 +291,22 @@ def main() -> int:
             for item in duplicate_result["envelopes"]
         ), duplicate_result
 
+        store, allow = new_case(root, "duplicate-envelope-field", keys)
+        duplicate_envelope = attest(keys["anthropic"], store, run_id="a-run")
+        attest(keys["openai"], store, run_id="o-run")
+        original = duplicate_envelope.read_text()
+        duplicate_envelope.write_text(original.replace('"payload"', '"payload":null,"payload"', 1))
+        assert_status(report(allow, store), "FAIL", "malformed")
+
+        store, allow = new_case(root, "duplicate-allowlist-field", keys)
+        attest(keys["anthropic"], store, run_id="a-run")
+        attest(keys["openai"], store, run_id="o-run")
+        original = allow.read_text()
+        allow.write_text(original.replace('"keyid"', '"keyid":null,"keyid"', 1))
+        duplicate_allow = report(allow, store)
+        assert_status(duplicate_allow, "FAIL")
+        assert "malformed allowlist: duplicate JSON object key: 'keyid'" in duplicate_allow["detail"]
+
         store, allow = new_case(root, "tampered-signature", keys)
         first = attest(keys["anthropic"], store, run_id="a-run")
         attest(keys["openai"], store, run_id="o-run")

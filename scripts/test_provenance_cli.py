@@ -463,6 +463,25 @@ def main() -> int:
         )
         assert "artifacts must be an array of objects" in malformed_result.stderr
 
+        duplicate_receipt = tmp / "duplicate-receipt.json"
+        duplicate_receipt.write_text(
+            receipt.read_text().replace(
+                '"receipt_id": "fixture-receipt"',
+                '"receipt_id": "other", "receipt_id": "fixture-receipt"',
+                1,
+            )
+        )
+        duplicate_output = tmp / "duplicate.png"
+        duplicate_result = run(
+            "provenance", "create",
+            "--source", str(source), "--output", str(duplicate_output),
+            "--receipt", str(duplicate_receipt), "--artifact-id", "fixture-png",
+            "--fixture-cert", str(cert), "--fixture-key", str(key),
+            expect=2,
+        )
+        assert "duplicate JSON object key: 'receipt_id'" in duplicate_result.stderr
+        assert not duplicate_output.exists()
+
         unsupported = tmp / "artifact.json"
         unsupported.write_text("{}")
         result = run(
