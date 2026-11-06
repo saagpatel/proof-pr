@@ -77,7 +77,7 @@ def main() -> int:
     )
     duplicate_errors = _errors_for_raw(duplicated)
     if not any(
-        "duplicate JSON object key: schema_version" in error
+        "duplicate JSON object key: 'schema_version'" in error
         for error in duplicate_errors
     ):
         raise AssertionError(

@@ -9,9 +9,10 @@ whether the evidence itself is true.
 from __future__ import annotations
 
 import argparse
-import json
 from pathlib import Path
 from typing import Any
+
+from .json_utils import loads_unique_json
 
 STATUSES = {
     "passed",
@@ -109,18 +110,9 @@ ALLOWED_ROLLBACK = {"status", "path", "notes"}
 ALLOWED_ARTIFACT = REQUIRED_ARTIFACT | {"sha256", "external"}
 
 
-def _object_without_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
-    data: dict[str, Any] = {}
-    for key, value in pairs:
-        if key in data:
-            raise ValueError(f"duplicate JSON object key: {key}")
-        data[key] = value
-    return data
-
-
 def _load(path: Path) -> dict[str, Any]:
     with path.open(encoding="utf-8") as handle:
-        data = json.load(handle, object_pairs_hook=_object_without_duplicate_keys)
+        data = loads_unique_json(handle.read())
     if not isinstance(data, dict):
         raise ValueError("receipt must be a JSON object")
     return data
@@ -244,7 +236,7 @@ def validate_receipt(path: Path) -> list[str]:
     errors: list[str] = []
     try:
         receipt = _load(path)
-    except (json.JSONDecodeError, ValueError) as exc:
+    except ValueError as exc:
         return [f"invalid receipt JSON: {exc}"]
 
     _missing("receipt", receipt, REQUIRED_TOP_LEVEL, errors)
