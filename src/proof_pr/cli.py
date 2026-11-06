@@ -33,6 +33,7 @@ import proof_pr.review as review
 import proof_pr.public_git_metadata as public_git_metadata
 
 from ._version import __version__
+from .json_utils import loads_unique_json
 from .validate_receipts import validate_receipt
 
 STATUSES = {
@@ -517,11 +518,17 @@ def _default_receipt(cwd: Path, *, tier: str, summary: str, agent: str, mode: st
     }
 
 
+class ReceiptInputError(ValueError):
+    """A receipt cannot be interpreted as one JSON object."""
+
+
 def _load_receipt(path: Path) -> dict[str, Any]:
-    with path.open(encoding="utf-8") as handle:
-        data = json.load(handle)
+    try:
+        data = loads_unique_json(path.read_text(encoding="utf-8"))
+    except ValueError as exc:
+        raise ReceiptInputError(f"{path}: {exc}") from exc
     if not isinstance(data, dict):
-        raise ValueError(f"{path} must contain a JSON object")
+        raise ReceiptInputError(f"{path} must contain a JSON object")
     return data
 
 
@@ -1985,6 +1992,8 @@ def main() -> int:
         return args.func(args)
     except provenance.ProvenanceError as exc:
         return provenance.cli_error(exc)
+    except ReceiptInputError as exc:
+        parser.error(str(exc))
 
 
 if __name__ == "__main__":

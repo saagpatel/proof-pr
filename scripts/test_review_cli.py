@@ -157,6 +157,17 @@ def resign_statement(path: Path, key: dict[str, Any], statement: dict[str, Any],
     path.write_text(json.dumps(signed.to_jsonable()))
 
 
+def resign_raw_payload(path: Path, key: dict[str, Any], payload: bytes) -> None:
+    from checkseal import dsse
+    from checkseal.sign.local import load_private_signer
+
+    envelope = json.loads(path.read_text())
+    unsigned = dsse.Envelope(payload, envelope["payloadType"], [])
+    signature = load_private_signer(str(key["private"])).sign(unsigned.signing_bytes())
+    signed = dsse.Envelope(payload, unsigned.payload_type, [signature])
+    path.write_text(json.dumps(signed.to_jsonable()))
+
+
 def read_statement(path: Path) -> dict[str, Any]:
     return json.loads(base64.b64decode(json.loads(path.read_text())["payload"]))
 
@@ -259,6 +270,42 @@ def main() -> int:
             "bytes": len(opaque_findings),
         }
         assert opaque_findings not in base64.b64decode(genuine_envelope["payload"])
+
+        store, allow = new_case(root, "duplicate-signed-field", keys)
+        duplicate_head = attest(keys["anthropic"], store, run_id="a-run")
+        attest(keys["openai"], store, run_id="o-run")
+        envelope = json.loads(duplicate_head.read_text())
+        payload = base64.b64decode(envelope["payload"])
+        expected_head = b'"head":"' + HEAD.encode() + b'"'
+        assert expected_head in payload
+        payload = payload.replace(
+            expected_head,
+            b'"head":"' + b"c" * 40 + b'","head":"' + HEAD.encode() + b'"',
+            1,
+        )
+        resign_raw_payload(duplicate_head, keys["anthropic"], payload)
+        duplicate_result = report(allow, store)
+        assert_status(duplicate_result, "FAIL", "malformed")
+        assert any(
+            "duplicate JSON object key: 'head'" in item.get("detail", "")
+            for item in duplicate_result["envelopes"]
+        ), duplicate_result
+
+        store, allow = new_case(root, "duplicate-envelope-field", keys)
+        duplicate_envelope = attest(keys["anthropic"], store, run_id="a-run")
+        attest(keys["openai"], store, run_id="o-run")
+        original = duplicate_envelope.read_text()
+        duplicate_envelope.write_text(original.replace('"payload"', '"payload":null,"payload"', 1))
+        assert_status(report(allow, store), "FAIL", "malformed")
+
+        store, allow = new_case(root, "duplicate-allowlist-field", keys)
+        attest(keys["anthropic"], store, run_id="a-run")
+        attest(keys["openai"], store, run_id="o-run")
+        original = allow.read_text()
+        allow.write_text(original.replace('"keyid"', '"keyid":null,"keyid"', 1))
+        duplicate_allow = report(allow, store)
+        assert_status(duplicate_allow, "FAIL")
+        assert "malformed allowlist: duplicate JSON object key: 'keyid'" in duplicate_allow["detail"]
 
         store, allow = new_case(root, "tampered-signature", keys)
         first = attest(keys["anthropic"], store, run_id="a-run")

@@ -9,9 +9,10 @@ whether the evidence itself is true.
 from __future__ import annotations
 
 import argparse
-import json
 from pathlib import Path
 from typing import Any
+
+from .json_utils import loads_unique_json
 
 STATUSES = {
     "passed",
@@ -111,7 +112,7 @@ ALLOWED_ARTIFACT = REQUIRED_ARTIFACT | {"sha256", "external"}
 
 def _load(path: Path) -> dict[str, Any]:
     with path.open(encoding="utf-8") as handle:
-        data = json.load(handle)
+        data = loads_unique_json(handle.read())
     if not isinstance(data, dict):
         raise ValueError("receipt must be a JSON object")
     return data
@@ -233,7 +234,10 @@ def _string_list(name: str, value: Any, errors: list[str], *, allow_empty: bool)
 
 def validate_receipt(path: Path) -> list[str]:
     errors: list[str] = []
-    receipt = _load(path)
+    try:
+        receipt = _load(path)
+    except ValueError as exc:
+        return [f"invalid receipt JSON: {exc}"]
 
     _missing("receipt", receipt, REQUIRED_TOP_LEVEL, errors)
     _closed("receipt", receipt, REQUIRED_TOP_LEVEL, errors)

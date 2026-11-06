@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import copy
 import json
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -28,6 +29,13 @@ def _errors_for(payload: dict[str, Any]) -> list[str]:
     with tempfile.TemporaryDirectory() as tmp:
         path = Path(tmp) / "receipt.json"
         path.write_text(json.dumps(payload), encoding="utf-8")
+        return validate_receipt(path)
+
+
+def _errors_for_raw(raw: str) -> list[str]:
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "receipt.json"
+        path.write_text(raw, encoding="utf-8")
         return validate_receipt(path)
 
 
@@ -58,6 +66,36 @@ def main() -> int:
     schema = json.loads((ROOT / "schemas" / "proof-pr.v1.schema.json").read_text())
     if _errors_for(base):
         raise AssertionError("canonical base fixture must validate")
+
+    canonical = (ROOT / "examples" / "pr-022-proof-pr-test-harness.json").read_text(
+        encoding="utf-8"
+    )
+    duplicated = canonical.replace(
+        '"schema_version": "proof-pr.v1",',
+        '"schema_version": "proof-pr.invalid",\n  '
+        '"schema_version": "proof-pr.v1",',
+        1,
+    )
+    duplicate_errors = _errors_for_raw(duplicated)
+    if not any(
+        "duplicate JSON object key: 'schema_version'" in error
+        for error in duplicate_errors
+    ):
+        raise AssertionError(
+            f"duplicate schema_version was not rejected: {duplicate_errors!r}"
+        )
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "receipt.json"
+        path.write_text(duplicated, encoding="utf-8")
+        rendered = subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "proof_pr.py"), "render", str(path)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert rendered.returncode == 2, rendered
+        assert "duplicate JSON object key: 'schema_version'" in rendered.stderr, rendered
+        assert not rendered.stdout, rendered
 
     schema_closed_objects = {
         "receipt": schema,

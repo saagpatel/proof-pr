@@ -14,6 +14,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from .json_utils import loads_unique_json
+
 PREDICATE_TYPE = "https://github.com/saagpatel/proof-pr/review-attestation/v1"
 STATEMENT_TYPE = "https://in-toto.io/Statement/v1"
 PAYLOAD_TYPE = "application/vnd.in-toto+json"
@@ -112,7 +114,7 @@ def attest(args: argparse.Namespace) -> int:
     dsse, local, _ = signing()
     private = Path(args.key).expanduser()
     signer = local.load_private_signer(str(private))
-    metadata = json.loads(metadata_path(private).read_text())
+    metadata = loads_unique_json(metadata_path(private).read_text())
     if not isinstance(metadata, dict) or metadata.get("keyid") != signer.keyid:
         raise ReviewError("key metadata keyid does not match the private key")
     runner = token(metadata.get("runner", ""))
@@ -202,7 +204,7 @@ def validate_statement(statement: Any) -> dict[str, Any]:
 
 
 def load_allowlist(path: Path, local: Any) -> dict[str, dict[str, Any]]:
-    entries = json.loads(path.read_text())
+    entries = loads_unique_json(path.read_text())
     if not isinstance(entries, list):
         raise ReviewError("allowlist must be a list")
     result = {}
@@ -274,7 +276,7 @@ def verify_two_key(args: argparse.Namespace) -> int:
             if not stat.S_ISREG(os.lstat(path).st_mode):
                 item["detail"] = "not a regular file"
                 continue
-            envelope = dsse.Envelope.from_jsonable(json.loads(path.read_text()))
+            envelope = dsse.Envelope.from_jsonable(loads_unique_json(path.read_text()))
             # This profile has exactly one local signing key per review.
             if envelope.payload_type != PAYLOAD_TYPE or len(envelope.signatures) != 1:
                 raise ReviewError("expected one local signature and in-toto payload type")
@@ -289,7 +291,7 @@ def verify_two_key(args: argparse.Namespace) -> int:
             except signature_error:
                 item["reason"] = "bad_signature"
                 continue
-            statement = json.loads(envelope.payload)
+            statement = loads_unique_json(envelope.payload)
             p = validate_statement(statement)
             item.update(vendor=p["reviewer"]["vendor"], run_id=p["run_id"], verdict=p["verdict"])
             if (entry["vendor"] != p["reviewer"]["vendor"] or
