@@ -59,7 +59,75 @@ def _add_extra(path: tuple[Any, ...]) -> Mutator:
     return mutate
 
 
+def _test_ready_decisions() -> None:
+    base = json.loads((ROOT / "examples" / "pr-024-sample-dashboard-rollups.json").read_text())
+    base["limitations"] = []
+    cli = [sys.executable, str(ROOT / "scripts" / "proof_pr.py")]
+    with tempfile.TemporaryDirectory() as tmp:
+        receipt = Path(tmp) / "receipt.json"
+
+        def finalize(payload: dict[str, Any]) -> subprocess.CompletedProcess[str]:
+            receipt.write_text(json.dumps(payload))
+            return subprocess.run([*cli, "finalize", str(receipt), "--require-ready"], capture_output=True, text=True)
+
+        assert finalize(copy.deepcopy(base)).returncode == 0
+        for mutation in ("missing-status", "unknown-status", "missing-security", "invalid-required", "missing-limitations"):
+            payload = copy.deepcopy(base)
+            if mutation == "missing-status":
+                del payload["evidence"][0]["status"]
+            elif mutation == "unknown-status":
+                payload["evidence"][0]["status"] = "unknown"
+            elif mutation == "missing-security":
+                del payload["security"]["redaction"]
+            elif mutation == "invalid-required":
+                payload["evidence"][0]["required"] = "yes"
+            else:
+                del payload["limitations"]
+            result = finalize(payload)
+            assert result.returncode != 0, (mutation, result.stdout, result.stderr)
+            assert json.loads(receipt.read_text())["overall"]["review_decision"] == "revise"
+
+        for malformed in (None, 42, {"reason": "unresolved review"}):
+            for extra in ([], ["--allow-limitations"]):
+                payload = copy.deepcopy(base)
+                payload["limitations"] = [malformed]
+                receipt.write_text(json.dumps(payload))
+                result = subprocess.run(
+                    [*cli, "finalize", str(receipt), "--require-ready", *extra],
+                    capture_output=True, text=True,
+                )
+                assert result.returncode == 1, (malformed, extra, result.stdout)
+                updated = json.loads(receipt.read_text())
+                assert updated["limitations"] == [malformed]
+                assert updated["overall"]["review_decision"] == "revise"
+
+        receipt.write_text(json.dumps(base))
+        result = subprocess.run([*cli, "run", "--receipt", str(receipt), "--id", "tests", "--", sys.executable, "-c", "raise SystemExit(1)"], capture_output=True, text=True)
+        assert result.returncode == 0, result.stderr
+        updated = json.loads(receipt.read_text())
+        assert next(item for item in updated["evidence"] if item["id"] == "tests")["status"] == "failed"
+        assert updated["overall"] == {"status": "stale", "review_decision": "revise"}
+        result = subprocess.run([*cli, "finalize", str(receipt), "--require-ready"], capture_output=True, text=True)
+        assert result.returncode == 1
+        assert json.loads(receipt.read_text())["overall"]["status"] == "failed"
+
+        receipt.write_text(json.dumps(base))
+        result = subprocess.run([*cli, "collect", str(receipt), "--cwd", str(ROOT)], capture_output=True, text=True)
+        assert result.returncode == 0, result.stderr
+        assert json.loads(receipt.read_text())["overall"]["review_decision"] == "revise"
+
+        receipt.write_text(json.dumps(base))
+        config = Path(tmp) / "config.json"
+        config.write_text(json.dumps({"commands": []}))
+        result = subprocess.run([*cli, "run-config", str(receipt), "--config", str(config), "--cwd", str(ROOT)], capture_output=True, text=True)
+        assert result.returncode == 0, result.stderr
+        assert json.loads(receipt.read_text())["overall"]["review_decision"] == "revise"
+        result = subprocess.run([*cli, "finalize", str(receipt), "--require-ready"], capture_output=True, text=True)
+        assert result.returncode == 0, result.stderr
+
+
 def main() -> int:
+    _test_ready_decisions()
     base = json.loads(
         (ROOT / "examples" / "pr-022-proof-pr-test-harness.json").read_text()
     )

@@ -63,7 +63,6 @@ EVIDENCE_KINDS = {
     "manual-review",
 }
 DRAFT_LIMITATION = "Draft receipt; evidence has not been fully collected."
-NON_GREEN_REQUIRED = {"failed", "blocked", "skipped", "stale", "partial", "not_applicable"}
 NON_GREEN_SECURITY = {"failed", "blocked", "skipped", "stale", "partial"}
 MAX_RENDERED_COMMAND_CHARS = 96
 PASSING_STATUSES = {"passed", "passed_with_warnings"}
@@ -611,6 +610,7 @@ def _upsert_artifact(receipt: dict[str, Any], artifact: dict[str, Any]) -> None:
 
 
 def _upsert_evidence(receipt: dict[str, Any], item: dict[str, Any]) -> None:
+    _invalidate_ready(receipt)
     evidence = receipt.setdefault("evidence", [])
     for index, existing in enumerate(evidence):
         if existing.get("id") == item["id"]:
@@ -619,13 +619,21 @@ def _upsert_evidence(receipt: dict[str, Any], item: dict[str, Any]) -> None:
     evidence.append(item)
 
 
+def _invalidate_ready(receipt: dict[str, Any]) -> None:
+    """A changed receipt must be finalized again before it is presented as ready."""
+    overall = receipt.get("overall")
+    if isinstance(overall, dict) and (
+        overall.get("status") in ("passed", "passed_with_warnings")
+        or overall.get("review_decision") in ("ready", "ready_with_operator_awareness")
+    ):
+        overall.update({"status": "stale", "review_decision": "revise"})
+
+
 def _remove_draft_limitations(receipt: dict[str, Any]) -> None:
     limitations = receipt.get("limitations")
     if not isinstance(limitations, list):
         return
-    receipt["limitations"] = [
-        item for item in limitations if isinstance(item, str) and item != DRAFT_LIMITATION
-    ]
+    receipt["limitations"] = [item for item in limitations if item != DRAFT_LIMITATION]
 
 
 def _has_diff_metadata(receipt: dict[str, Any]) -> bool:
@@ -674,13 +682,31 @@ def _finalize_receipt(
         _remove_draft_limitations(receipt)
     _normalize_diff_metadata(receipt)
 
-    evidence = [item for item in receipt.get("evidence", []) if isinstance(item, dict)]
+    raw_evidence = receipt.get("evidence")
+    evidence = (
+        [item for item in raw_evidence if isinstance(item, dict)]
+        if isinstance(raw_evidence, list) else []
+    )
+    invalid_evidence = (
+        not isinstance(raw_evidence, list)
+        or len(evidence) != len(raw_evidence)
+        or any(
+            type(item.get("required")) is not bool
+            or not isinstance(item.get("status"), str)
+            or item["status"] not in STATUSES
+            for item in evidence
+        )
+    )
     required = [item for item in evidence if item.get("required") is True]
-    required_statuses = [
-        item.get("status") for item in required if isinstance(item.get("status"), str)
-    ]
+    required_statuses = [item.get("status") for item in required]
     security_statuses = _security_statuses(receipt)
+    invalid_security = len(security_statuses) != 3 or any(
+        status not in STATUSES for status in security_statuses
+    )
     limitations = receipt.get("limitations")
+    invalid_limitations = not isinstance(limitations, list) or any(
+        not isinstance(item, str) or not item for item in limitations
+    )
     has_limitations = isinstance(limitations, list) and bool(limitations)
 
     overall = receipt.setdefault("overall", {})
@@ -690,7 +716,10 @@ def _finalize_receipt(
     if "blocked" in required_statuses or "blocked" in security_statuses:
         overall.update({"status": "blocked", "review_decision": "revise"})
         return
-    if not required or any(status in NON_GREEN_REQUIRED for status in required_statuses):
+    if (
+        invalid_evidence or invalid_security or invalid_limitations or not required
+        or any(status not in PASSING_STATUSES for status in required_statuses)
+    ):
         overall.update({"status": "partial", "review_decision": "revise"})
         return
     if any(status in NON_GREEN_SECURITY for status in security_statuses):
@@ -1593,6 +1622,7 @@ def cmd_collect(args: argparse.Namespace) -> int:
         _set_example_pattern(receipt, pattern=pattern, source="explicit")
     elif args.suggest_example:
         _set_example_pattern(receipt, source="suggested")
+    _invalidate_ready(receipt)
     _write_receipt(path, receipt)
     print(f"updated {path}")
     return 0
@@ -1626,6 +1656,7 @@ def cmd_run_config(args: argparse.Namespace) -> int:
     config = _load_config(Path(args.config))
     _apply_config(receipt, config)
     _collect_diff(cwd, receipt)
+    _invalidate_ready(receipt)
     commands = config.get("commands", [])
     if not isinstance(commands, list):
         raise ValueError("config.commands must be a list")

@@ -222,6 +222,9 @@ receipt, blocked required proof keeps it in revise, skipped/stale/partial
 required proof remains partial, and unresolved limitations prevent a ready
 decision unless `--allow-limitations` is set. The default draft limitation is
 cleared during finalization after evidence has been collected.
+Missing or unrecognized evidence and security statuses cannot produce a ready
+decision. Collecting new metadata or evidence marks an earlier ready decision
+stale; run `finalize` again to evaluate the updated receipt.
 
 `check-public-git-metadata` is a public-release guardrail. It fails when selected
 refs contain commit or annotated-tag email metadata outside GitHub noreply
