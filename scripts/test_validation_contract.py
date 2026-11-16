@@ -87,6 +87,20 @@ def _test_ready_decisions() -> None:
             assert result.returncode != 0, (mutation, result.stdout, result.stderr)
             assert json.loads(receipt.read_text())["overall"]["review_decision"] == "revise"
 
+        for malformed in (None, 42, {"reason": "unresolved review"}):
+            for extra in ([], ["--allow-limitations"]):
+                payload = copy.deepcopy(base)
+                payload["limitations"] = [malformed]
+                receipt.write_text(json.dumps(payload))
+                result = subprocess.run(
+                    [*cli, "finalize", str(receipt), "--require-ready", *extra],
+                    capture_output=True, text=True,
+                )
+                assert result.returncode == 1, (malformed, extra, result.stdout)
+                updated = json.loads(receipt.read_text())
+                assert updated["limitations"] == [malformed]
+                assert updated["overall"]["review_decision"] == "revise"
+
         receipt.write_text(json.dumps(base))
         result = subprocess.run([*cli, "run", "--receipt", str(receipt), "--id", "tests", "--", sys.executable, "-c", "raise SystemExit(1)"], capture_output=True, text=True)
         assert result.returncode == 0, result.stderr

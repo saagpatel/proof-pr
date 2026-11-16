@@ -633,9 +633,7 @@ def _remove_draft_limitations(receipt: dict[str, Any]) -> None:
     limitations = receipt.get("limitations")
     if not isinstance(limitations, list):
         return
-    receipt["limitations"] = [
-        item for item in limitations if isinstance(item, str) and item != DRAFT_LIMITATION
-    ]
+    receipt["limitations"] = [item for item in limitations if item != DRAFT_LIMITATION]
 
 
 def _has_diff_metadata(receipt: dict[str, Any]) -> bool:
