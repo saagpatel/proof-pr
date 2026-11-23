@@ -169,20 +169,31 @@ application or mandatory browser check for a pure documentation change.
 ## CLI Usage
 
 From the checkout root, choose one `init` command for a new receipt and one
-`workflow-template` command for a new workflow. The self-template config runs
-this repository's example validator.
+`workflow-template` command for a new workflow. Copy the self-template to start
+a config for this PR.
 
 ```bash
 python3 scripts/proof_pr.py init --tier T2 --summary "Short PR summary" --output proof-pr.json
 # Or: python3 scripts/proof_pr.py init --tier T3 --example "Workflow dogfood" --summary "Short PR summary" --output proof-pr.json
 python3 scripts/proof_pr.py workflow-template
 # Or: python3 scripts/proof_pr.py workflow-template --pull-request --receipt-path proof-pr.json
-python3 scripts/proof_pr.py collect proof-pr.json --config examples/proof-pr-self-template.config.example.json --suggest-example
+cp -i examples/proof-pr-self-template.config.example.json proof-pr.config.json
+```
+
+Edit `proof-pr.config.json` before continuing. Both `collect` and `run-config`
+apply its values to the receipt. Replace the template's T0 risk tier, reasons,
+and changed surfaces with those for this PR. Set the change summary and scope
+notes, record the actual status and rationale for each security check, and give
+the rollback steps for this change. Set `commands` to the checks that verify
+the change. The template only validates bundled example receipts.
+
+```bash
+python3 scripts/proof_pr.py collect proof-pr.json --config proof-pr.config.json --suggest-example
 python3 scripts/proof_pr.py run --receipt proof-pr.json --id tests --kind test -- python3 scripts/test_examples_cli.py
-python3 scripts/proof_pr.py run-config proof-pr.json --config examples/proof-pr-self-template.config.example.json --finalize
+python3 scripts/proof_pr.py run-config proof-pr.json --config proof-pr.config.json --finalize
 python3 scripts/proof_pr.py finalize proof-pr.json --require-ready
 python3 scripts/proof_pr.py render proof-pr.json
-python3 scripts/proof_pr.py render examples/pr-101-agent-operating-decision.json --head-sha "$(git rev-parse HEAD)"
+python3 scripts/proof_pr.py render examples/pr-101-agent-operating-decision.json
 python3 scripts/proof_pr.py render --full-commands proof-pr.json
 python3 scripts/proof_pr.py receipt-hygiene proof-pr.json
 python3 scripts/proof_pr.py receipt-hygiene proof-pr.json --explain
@@ -227,10 +238,15 @@ By default, `render` compacts long command lines so PR bodies stay scannable.
 Use `--full-commands` when a reviewer wants complete commands inline; receipt
 JSON always keeps the full command array.
 
-Use `--head-sha` when rendering a PR body or CI summary for a committed receipt
-whose `subject.head_sha_status` is `pending_commit`. The JSON can remain honest
-about its commit-time placeholder while the rendered block anchors to the final
-PR or check-run SHA.
+To render the current PR's own committed `proof-pr.json` for a PR body or CI
+summary, use `--head-sha` if `subject.head_sha_status` is `pending_commit`.
+Run this from a clean checkout of the receipt after verifying that `HEAD`
+matches the PR's final head SHA. The override sets the displayed SHA and leaves
+the recorded evidence and decision intact.
+
+```bash
+python3 scripts/proof_pr.py render proof-pr.json --head-sha "$(git rev-parse HEAD)"
+```
 
 `init` attaches a suggested `producer.example_pattern` from the receipt tier, or
 an explicit one from `--example`. `collect --suggest-example` refreshes that
