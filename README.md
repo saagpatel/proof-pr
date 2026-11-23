@@ -23,9 +23,11 @@ teams later, but v0 optimizes for fast human review of agent-created changes.
   model.
 - `docs/review-attestations.md` - optional signed review attestations and
   two-key verification.
+- `schemas/proof-pr.review-attestation.v1.schema.json` - signed review predicate
+  schema.
 - `schemas/proof-pr.artifact-provenance-report.v1.schema.json` - schema for the
   derived, non-authoritative inspector report.
-- `examples/` - compact historical receipts from real PRs.
+- `examples/` - historical and illustrative receipts, plus sample configs.
 - `examples/pr-101-agent-operating-decision.json` - T3 agent PR with optional
   OPERANT-style `operating-decision` evidence.
 - `examples/proof-pr-self-template.config.example.json` - config template for
@@ -48,7 +50,7 @@ teams later, but v0 optimizes for fast human review of agent-created changes.
 
 ## Install
 
-From a local checkout inside a virtual environment:
+From the checkout root, create and activate a virtual environment with Python 3.11 or later:
 
 ```bash
 python3 -m venv .venv
@@ -76,11 +78,12 @@ python3 scripts/test_review_cli.py --proof-pr proof-pr
 See [signed review attestations](docs/review-attestations.md) for the two-key
 walkthrough and threat model. Signatures prove runner keys, not served models.
 
-With the checksum-verified official `c2patool` 0.27.16 binary available, run
+With the provenance extra installed and the checksum-verified official
+`c2patool` 0.27.16 binary on your `PATH`, run
 the pinned PNG/JPEG embedded/detached bidirectional readback:
 
 ```bash
-python3 scripts/test_c2patool_interop.py --c2patool /path/to/c2patool
+python3 scripts/test_c2patool_interop.py --c2patool "$(command -v c2patool)"
 ```
 
 This proves an independent CLI/process surface only. Both paths use
@@ -102,13 +105,20 @@ python3 -m pip install git+https://github.com/saagpatel/proof-pr.git
 python3 scripts/validate_receipts.py examples/pr-*.json
 python3 scripts/proof_pr.py validate examples/pr-*.json
 python3 scripts/proof_pr.py render examples/pr-024-sample-dashboard-rollups.json
-python3 scripts/check_public_git_metadata.py --ref HEAD --ref 'refs/tags/v*'
-proof-pr check-public-git-metadata --ref HEAD --ref 'refs/tags/v*'
 ```
 
 The validator is intentionally lightweight. It checks structure, required
 fields, enum values, and the tier/evidence basics. It does not decide whether a
 claim is true; the receipt author still owns honest evidence.
+
+To audit Git history and release tags, use either metadata checker. Both exit 1
+on this checkout because historical email metadata falls outside the default
+allowlist. Use the `--base-ref` example below to check only newly introduced commits.
+
+```bash
+python3 scripts/check_public_git_metadata.py --ref HEAD --ref 'refs/tags/v*'
+proof-pr check-public-git-metadata --ref HEAD --ref 'refs/tags/v*'
+```
 
 ## Contributor verification
 
@@ -158,17 +168,32 @@ application or mandatory browser check for a pure documentation change.
 
 ## CLI Usage
 
+From the checkout root, choose one `init` command for a new receipt and one
+`workflow-template` command for a new workflow. Copy the self-template to start
+a config for this PR.
+
 ```bash
-python3 scripts/proof_pr.py init --cwd /path/to/repo --tier T2 --summary "Short PR summary" --output proof-pr.json
-python3 scripts/proof_pr.py init --cwd /path/to/repo --tier T3 --example "Workflow dogfood" --summary "Short PR summary" --output proof-pr.json
+python3 scripts/proof_pr.py init --tier T2 --summary "Short PR summary" --output proof-pr.json
+# Or: python3 scripts/proof_pr.py init --tier T3 --example "Workflow dogfood" --summary "Short PR summary" --output proof-pr.json
 python3 scripts/proof_pr.py workflow-template
-python3 scripts/proof_pr.py workflow-template --pull-request --receipt-path proof-pr.json
-python3 scripts/proof_pr.py collect proof-pr.json --cwd /path/to/repo --config examples/proof-pr.config.example.json --suggest-example
-python3 scripts/proof_pr.py run --receipt proof-pr.json --cwd /path/to/repo --id tests --kind test -- python3 -m pytest -q
-python3 scripts/proof_pr.py run-config proof-pr.json --cwd /path/to/repo --config examples/proof-pr.config.example.json --finalize
+# Or: python3 scripts/proof_pr.py workflow-template --pull-request --receipt-path proof-pr.json
+cp -i examples/proof-pr-self-template.config.example.json proof-pr.config.json
+```
+
+Edit `proof-pr.config.json` before continuing. Both `collect` and `run-config`
+apply its values to the receipt. Replace the template's T0 risk tier, reasons,
+and changed surfaces with those for this PR. Set the change summary and scope
+notes, record the actual status and rationale for each security check, and give
+the rollback steps for this change. Set `commands` to the checks that verify
+the change. The template only validates bundled example receipts.
+
+```bash
+python3 scripts/proof_pr.py collect proof-pr.json --config proof-pr.config.json --suggest-example
+python3 scripts/proof_pr.py run --receipt proof-pr.json --id tests --kind test -- python3 scripts/test_examples_cli.py
+python3 scripts/proof_pr.py run-config proof-pr.json --config proof-pr.config.json --finalize
 python3 scripts/proof_pr.py finalize proof-pr.json --require-ready
 python3 scripts/proof_pr.py render proof-pr.json
-python3 scripts/proof_pr.py render proof-pr.json --head-sha <pr-head-sha>
+python3 scripts/proof_pr.py render examples/pr-101-agent-operating-decision.json
 python3 scripts/proof_pr.py render --full-commands proof-pr.json
 python3 scripts/proof_pr.py receipt-hygiene proof-pr.json
 python3 scripts/proof_pr.py receipt-hygiene proof-pr.json --explain
@@ -180,10 +205,17 @@ python3 scripts/proof_pr.py examples --json --tier T3
 python3 scripts/test_receipt_hygiene_cli.py
 python3 scripts/test_example_pattern_cli.py
 python3 scripts/proof_pr.py validate proof-pr.json
-proof-pr check-public-git-metadata --ref HEAD --ref 'refs/tags/v*'
 proof-pr check-public-git-metadata --base-ref origin/main --ref HEAD
 proof-pr check-public-git-metadata --base-ref origin/main --ref HEAD --summary-format text
 proof-pr collect-public-git-metadata --receipt proof-pr.json --base-ref origin/main --ref HEAD
+```
+
+With the provenance extra installed, the following pair signs and verifies a
+synthetic `fixture.png`. Supply that file and a `fixture-png` entry in the
+receipt's `artifacts` with its matching lowercase SHA-256. For a self-contained
+example that creates both inputs, run `python3 scripts/test_provenance_cli.py`.
+
+```bash
 proof-pr provenance create --source fixture.png --output signed.png --receipt proof-pr.json --artifact-id fixture-png --fixture-cert tests/fixtures/provenance/es256_certs.fixture.pem --fixture-key tests/fixtures/provenance/es256_private.fixture.pem
 proof-pr provenance verify signed.png --output provenance-report.json
 ```
@@ -206,10 +238,15 @@ By default, `render` compacts long command lines so PR bodies stay scannable.
 Use `--full-commands` when a reviewer wants complete commands inline; receipt
 JSON always keeps the full command array.
 
-Use `--head-sha` when rendering a PR body or CI summary for a committed receipt
-whose `subject.head_sha_status` is `pending_commit`. The JSON can remain honest
-about its commit-time placeholder while the rendered block anchors to the final
-PR or check-run SHA.
+To render the current PR's own committed `proof-pr.json` for a PR body or CI
+summary, use `--head-sha` if `subject.head_sha_status` is `pending_commit`.
+Run this from a clean checkout of the receipt after verifying that `HEAD`
+matches the PR's final head SHA. The override sets the displayed SHA and leaves
+the recorded evidence and decision intact.
+
+```bash
+python3 scripts/proof_pr.py render proof-pr.json --head-sha "$(git rev-parse HEAD)"
+```
 
 `init` attaches a suggested `producer.example_pattern` from the receipt tier, or
 an explicit one from `--example`. `collect --suggest-example` refreshes that
@@ -221,7 +258,7 @@ claim that the PR copied the example correctly.
 receipt, blocked required proof keeps it in revise, skipped/stale/partial
 required proof remains partial, and unresolved limitations prevent a ready
 decision unless `--allow-limitations` is set. The default draft limitation is
-cleared during finalization after evidence has been collected.
+cleared during finalization unless `--keep-draft-limitations` is set.
 Missing or unrecognized evidence and security statuses cannot produce a ready
 decision. Collecting new metadata or evidence marks an earlier ready decision
 stale; run `finalize` again to evaluate the updated receipt.
@@ -243,9 +280,9 @@ evidence rather than supply-chain provenance.
 Use `receipt-hygiene` as a read-only pre-review nudge. It inspects an existing
 receipt and suggests missing standard evidence for the risk tier, starting with
 public git metadata, secrets posture, workflow permission posture, rollback
-specificity, and operating-decision evidence on agent T2+ receipts. Add `--explain` to include copyable commands and compact receipt
-patch examples for missing evidence. Add `--check <id>` to focus on one finding
-and `--fix-only` to print just the remediation command/patch block. Add
+specificity, and operating-decision evidence on agent T2+ receipts. Add
+`--explain` for command templates and receipt patch examples. Use `--check <id>`
+to focus on one finding and `--explain --fix-only` to print just the suggested fix. Add
 `--strict` when a repo wants hygiene warnings to fail CI.
 The reusable workflow writes these suggestions to the job summary by default in
 advisory mode, followed by a focused public git metadata fix block when that
